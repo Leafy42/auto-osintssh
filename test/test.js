@@ -134,6 +134,49 @@ eq('classify cve', A.classify('CVE-2021-1234'), 'cve');
   ok('canvas widens with count', w >= ptsMin[ptsMin.length-1].x);
 }
 
+/* ---- modern recon tools ---- */
+{
+  const httpx='{"url":"https://app.x.com","host":"203.0.113.9","status_code":200,"title":"Login","tech":["nginx"]}\nhttps://b.x.com [200] [Home]';
+  const eh=A.parseHttpx(httpx);
+  ok('httpx json url', eh.some(e=>e.type==='url'&&/app\.x\.com/.test(e.data)));
+  ok('httpx text url', eh.some(e=>/b\.x\.com/.test(e.data)));
+  ok('httpx surfaces host', eh.some(e=>e.data==='203.0.113.9'));
+
+  const nuclei='{"template-id":"cve-2021-1","host":"https://x.com","matched-at":"https://x.com/a","info":{"severity":"high"}}';
+  const en=A.parseNuclei(nuclei);
+  ok('nuclei severity as type', en.some(e=>e.type==='high'&&/nuclei:cve-2021-1/.test(e.module)));
+
+  const masscan='open tcp 443 203.0.113.5 1620000000\nopen tcp 22 203.0.113.5 1620000000';
+  ok('masscan ports', A.parseMasscan(masscan).filter(e=>e.type==='port').length===2);
+
+  const dnsx='api.x.com [A] [203.0.113.7]\nmail.x.com [A] [203.0.113.8]';
+  const ed=A.parseDnsx(dnsx);
+  ok('dnsx domain+ip', ed.some(e=>e.type==='domain'&&e.data==='api.x.com') && ed.some(e=>e.type==='ip'&&e.data==='203.0.113.7'));
+
+  const subs='a.x.com\nb.x.com\n{"host":"c.x.com"}';
+  ok('subdomains incl json line', A.parseSubdomains(subs,'subfinder').filter(e=>e.type==='domain').length===3);
+
+  const urls='https://x.com/a\nGET https://x.com/b 200';
+  ok('urls extracted', A.parseUrls(urls,'gau').every(e=>e.type==='url') && A.parseUrls(urls,'gau').some(e=>/\/b/.test(e.data)));
+
+  const secrets='[{"RuleID":"aws-key","File":"src/app.js","Secret":"AKIA..."}]';
+  ok('secrets parsed', A.parseSecrets(secrets).some(e=>e.type==='secret'&&/aws-key/.test(e.module)));
+}
+
+/* ---- auto-detection ---- */
+ok('detect nmap', A.detectTool('Nmap scan report for x.com (1.2.3.4)\n22/tcp open ssh')==='nmap');
+ok('detect masscan', A.detectTool('open tcp 80 1.2.3.4 1620000000')==='masscan');
+ok('detect httpx', A.detectTool('{"url":"https://x.com","status_code":200,"host":"1.2.3.4"}')==='httpx');
+ok('detect nuclei', A.detectTool('{"template-id":"x","matched-at":"https://x.com","info":{"severity":"low"}}')==='nuclei');
+ok('detect dnsx', A.detectTool('api.x.com [A] [1.2.3.4]')==='dnsx');
+ok('detect amass', A.detectTool('mail.x.com (FQDN) --> a_record --> 1.2.3.4 (IPAddress)')==='amass');
+ok('detect whois', A.detectTool('Domain Name: X.COM\nRegistrar: Foo')==='whois');
+ok('detect urls', A.detectTool('https://x.com/a\nhttps://x.com/b\nhttps://x.com/c')==='urls');
+ok('detect subdomains', A.detectTool('a.x.com\nb.x.com\nc.x.com\nd.x.com')==='subfinder');
+ok('detect csv by header', A.detectTool('updated,type,module,data\n1,a,b,c')==='csv');
+ok('detect filename hint', A.detectTool('whatever','nmap-scan.txt')==='nmap');
+ok('detect via TOOLS.auto resolves+parses', A.TOOLS.auto.parse('22/tcp open ssh\n443/tcp open https').length>=1);
+
 /* ---- source color stable ---- */
 ok('known tool color', A.sourceColor('nmap')==='#27e8a7');
 ok('unknown source deterministic', A.sourceColor('weirdtool')===A.sourceColor('weirdtool'));

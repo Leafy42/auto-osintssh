@@ -352,15 +352,158 @@ function parseLines(text, source){
   return out;
 }
 
+/* -------- modern recon tools (ProjectDiscovery & friends) -------- */
+function parseHttpx(text){
+  const out=[];
+  for (let line of String(text).split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    if (line[0]==='{'){
+      try{ const o=JSON.parse(line);
+        const url=o.url||o.input||o.host||''; const sc=o.status_code||o.status||'';
+        const tech=Array.isArray(o.tech||o.technologies)?(o.tech||o.technologies).join(','):'';
+        const mod=['httpx', sc&&('['+sc+']'), tech].filter(Boolean).join(' ');
+        if (url) out.push(ev({type:'url', module:mod, data:url+(o.title?(' — '+o.title):''), source:'httpx'}));
+        if (o.host && o.host!==url) out.push(ev({type:classify(o.host), module:'httpx', data:o.host, source:'httpx'}));
+      }catch(_){}
+      continue;
+    }
+    // text form: "https://x.com [200] [Title] [nginx]"
+    const m=line.match(/^(\S+)\s*(.*)$/);
+    if (m){ const meta=(m[2]||'').replace(/\[[0-9;]*m/g,'').replace(/\s+/g,' ').trim();
+      out.push(ev({type:'url', module:('httpx'+(meta?' '+meta:'')).slice(0,80), data:m[1], source:'httpx'})); }
+  }
+  return out;
+}
+function parseNuclei(text){
+  const out=[];
+  for (let line of String(text).split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    if (line[0]==='{'){
+      try{ const o=JSON.parse(line);
+        const id=o['template-id']||o.templateID||o.template_id||'finding';
+        const host=o.host||o['matched-at']||o.matched||o.url||'';
+        const sev=(o.info&&o.info.severity)||o.severity||'nuclei';
+        if (host) out.push(ev({type:sev, module:'nuclei:'+id, data:host, source:'nuclei'}));
+      }catch(_){}
+      continue;
+    }
+    // "[template-id] [protocol] [severity] matched-at"
+    const m=line.replace(/\[[0-9;]*m/g,'').match(/^\[([^\]]+)\]\s*\[([^\]]+)\]\s*\[([^\]]+)\]\s*(\S+)/);
+    if (m) out.push(ev({type:m[3], module:'nuclei:'+m[1], data:m[4], source:'nuclei'}));
+  }
+  return out;
+}
+function parseMasscan(text){
+  const s=String(text).trim();
+  if (looksLikeJSON(s)) return parseJSONGeneric(text,'masscan');
+  const out=[];
+  for (let line of s.split(/\r?\n/)){
+    line=line.trim(); if(!line||line[0]==='#') continue;
+    let m=line.match(/^open\s+(tcp|udp)\s+(\d+)\s+([\d.]+|[\da-f:]+)/i);   // list format
+    if (m){ out.push(ev({type:'port', module:'masscan', data:`${m[3]}:${m[2]} ${m[1]}`, source:'masscan'})); continue; }
+    m=line.match(/Host:\s*([\d.]+|[\da-f:]+).*Ports:\s*(\d+)\/open/i);     // grepable
+    if (m) out.push(ev({type:'port', module:'masscan', data:`${m[1]}:${m[2]}`, source:'masscan'}));
+  }
+  return out;
+}
+function parseDnsx(text){
+  const out=[];
+  for (let line of String(text).split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    if (line[0]==='{'){
+      try{ const o=JSON.parse(line);
+        const host=o.host||o.name; if(host) out.push(ev({type:'domain', module:'dnsx', data:host, source:'dnsx'}));
+        ['a','aaaa','cname'].forEach(k=>{ const v=o[k]; (Array.isArray(v)?v:v?[v]:[]).forEach(x=>out.push(ev({type:classify(x), module:'dnsx:'+k.toUpperCase(), data:x, source:'dnsx'}))); });
+      }catch(_){}
+      continue;
+    }
+    // "host.com [A] [1.2.3.4]"
+    const m=line.match(/^(\S+)\s+\[([A-Z]+)\]\s+\[([^\]]+)\]/);
+    if (m){ out.push(ev({type:'domain', module:'dnsx', data:m[1], source:'dnsx'}));
+      m[3].split(/[,\s]+/).forEach(v=>v&&out.push(ev({type:classify(v), module:'dnsx:'+m[2], data:v, source:'dnsx'}))); continue; }
+    out.push(ev({type:classify(line.split(/\s+/)[0]), module:'dnsx', data:line.split(/\s+/)[0], source:'dnsx'}));
+  }
+  return out;
+}
+function parseSubdomains(text, source){       // subfinder / assetfinder / sublist3r / findomain
+  const out=[]; source=source||'subfinder';
+  for (let line of String(text).split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    if (line[0]==='{'){ try{ const o=JSON.parse(line); const h=o.host||o.name||o.subdomain||o.input; if(h) out.push(ev({type:'domain', module:source, data:h, source})); }catch(_){} continue; }
+    const h=line.split(/[\s,]+/)[0];
+    out.push(ev({type:classify(h)||'domain', module:source, data:h, source}));
+  }
+  return out;
+}
+function parseUrls(text, source){             // gau / waybackurls / katana / hakrawler / gospider
+  const out=[]; source=source||'urls';
+  for (let line of String(text).split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    const toks=line.split(/\s+/); const u=toks.find(t=>/^https?:\/\//.test(t))||toks[toks.length-1];
+    out.push(ev({type:'url', module:source, data:u, source}));
+  }
+  return out;
+}
+function parseSecrets(text){                  // gitleaks / trufflehog JSON
+  const s=String(text).trim();
+  let arr;
+  try{ arr=JSON.parse(s); }catch(_){ arr=[]; for(const l of s.split(/\r?\n/)){ if(l.trim()) try{ arr.push(JSON.parse(l)); }catch(e){} } }
+  if (!arr || (!Array.isArray(arr) && typeof arr!=='object')) return parseLines(text,'secrets');
+  if (!Array.isArray(arr)) arr=arr.results||arr.findings||[arr];
+  const out=[];
+  for (const o of arr){ if(!o||typeof o!=='object') continue;
+    const rule=o.RuleID||o.rule||o.DetectorName||o.detector_name||o.detector||'secret';
+    const file=o.File||o.file||(o.SourceMetadata?JSON.stringify(o.SourceMetadata).slice(0,40):'');
+    const secret=o.Secret||o.Match||o.Raw||o.raw||o.match||'';
+    out.push(ev({type:'secret', module:'secret:'+rule, data:((file?file+' ':'')+String(secret).slice(0,60)).trim()||rule, source:'secrets'}));
+  }
+  return out.length?out:parseJSONGeneric(text,'secrets');
+}
+
+/* -------- format auto-detection -------- */
+function detectTool(text, filename){
+  const name=(filename||'').toLowerCase();
+  const s=String(text||'').trim();
+  const head=s.slice(0,4000);
+  const byName={spiderfoot:/spiderfoot/,nmap:/nmap/,masscan:/masscan/,amass:/amass/,subfinder:/subfinder|assetfinder|sublist3r|findomain/,httpx:/httpx/,nuclei:/nuclei/,dnsx:/dnsx/,shodan:/shodan/,whois:/whois/,theharvester:/harvest/,urls:/gau|wayback|katana|hakrawler/,maltego:/maltego/,secrets:/gitleaks|trufflehog|secret/,censys:/censys/};
+  for (const k in byName) if (byName[k].test(name)) return k;
+  if (!head) return 'lines';
+  if (/"template-id"|"matched-at"/.test(head) || /^\[[\w-]+\]\s*\[\w+\]\s*\[(info|low|medium|high|critical)\]/im.test(head)) return 'nuclei';
+  if (/"status_code"|"webserver"|"content_length"/.test(head) && /"url"|"host"/.test(head)) return 'httpx';
+  if (/^open\s+(tcp|udp)\s+\d+/im.test(head)) return 'masscan';
+  if (/Nmap scan report|Ports:\s*\d+\/open|^\d+\/tcp\s+open/im.test(head)) return 'nmap';
+  if (/-->\s*\w*_?record\s*-->/.test(head)) return 'amass';
+  if (/^\[\*\]\s|Emails found|Hosts found/im.test(head)) return 'theharvester';
+  if (/(Registrar|Creation Date|Domain Name|Registry Expiry):/i.test(head)) return 'whois';
+  if (/^\S+\s+\[[A-Z]+\]\s+\[/m.test(head)) return 'dnsx';
+  const lines=head.split(/\r?\n/).map(l=>l.trim()).filter(Boolean).slice(0,25);
+  if (lines.length && lines.filter(l=>/^https?:\/\//.test(l)).length >= lines.length*0.8) return 'urls';
+  if (looksLikeJSON(s) || /^\{.*\}$/m.test(head)) return 'json';
+  const first=head.split('\n')[0]||'';
+  if (first.includes(',') && /[a-z]/i.test(first)) return 'csv';
+  if (lines.length && lines.filter(l=>/^([a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,}$/i.test(l)).length >= lines.length*0.7) return 'subfinder';
+  return 'lines';
+}
+
 const TOOLS = {
+  auto:        { label:'⚡ Auto-detect',color:'#16e0ff', parse:t=>(TOOLS[detectTool(t)]||TOOLS.lines).parse(t), detect:true },
   spiderfoot:  { label:'SpiderFoot',   color:'#16e0ff', parse:t=>parseSpiderfoot(t) },
   theharvester:{ label:'theHarvester', color:'#9d7bff', parse:t=>parseHarvester(t) },
   nmap:        { label:'Nmap',         color:'#27e8a7', parse:t=>parseNmap(t) },
+  masscan:     { label:'Masscan',      color:'#ff6b35', parse:t=>parseMasscan(t) },
   amass:       { label:'Amass',        color:'#ff9f43', parse:t=>parseAmass(t) },
+  subfinder:   { label:'Subfinder/…',  color:'#ffb347', parse:t=>parseSubdomains(t,'subfinder') },
+  httpx:       { label:'httpx',        color:'#36d399', parse:t=>parseHttpx(t) },
+  dnsx:        { label:'dnsx',         color:'#64ffda', parse:t=>parseDnsx(t) },
+  nuclei:      { label:'Nuclei',       color:'#f471b5', parse:t=>parseNuclei(t) },
   shodan:      { label:'Shodan',       color:'#ff4d6d', parse:t=>parseShodan(t) },
+  censys:      { label:'Censys',       color:'#a78bfa', parse:t=>parseJSONGeneric(t,'censys') },
+  urls:        { label:'URLs (gau/…)', color:'#7fd1c7', parse:t=>parseUrls(t,'urls') },
   reconng:     { label:'Recon-ng',     color:'#ffe066', parse:t=>parseCSVGeneric(t,'reconng') },
   whois:       { label:'WHOIS',        color:'#4dd6ff', parse:t=>parseWhois(t) },
   dnsrecon:    { label:'DNSRecon',     color:'#64ffda', parse:t=>parseDns(t) },
+  maltego:     { label:'Maltego CSV',  color:'#2dd4bf', parse:t=>parseCSVGeneric(t,'maltego') },
+  secrets:     { label:'Secrets',      color:'#fb7185', parse:t=>parseSecrets(t) },
   csv:         { label:'Generic CSV',  color:'#9bb0bd', parse:t=>parseCSVGeneric(t,'csv') },
   json:        { label:'Generic JSON', color:'#b0a0ff', parse:t=>parseJSONGeneric(t,'json') },
   lines:       { label:'Raw lines',    color:'#7fd1c7', parse:t=>parseLines(t,'lines') },
@@ -1126,28 +1269,31 @@ function init(){
   }
   function openIngest(preset){
     fillToolSelect($('#ingest-tool')); fillTargets($('#ingest-target'));
-    if (preset) $('#ingest-tool').value=preset;
+    $('#ingest-tool').value = preset || 'auto';
     ingestModal.hidden=false; setTimeout(()=>$('#ingest-text').focus(),0); updatePreview();
   }
   function closeIngest(){ ingestModal.hidden=true; }
+  // resolve 'auto' to a concrete tool so we can tag the source and report it
   function currentParse(){
-    const tool=$('#ingest-tool').value; const txt=$('#ingest-text').value;
-    if (!txt.trim()) return {tool,events:[]};
-    let events=[]; try{ events=TOOLS[tool].parse(txt); }catch(e){ events=[]; }
-    return {tool,events};
+    const sel=$('#ingest-tool').value; const txt=$('#ingest-text').value;
+    const resolved = sel==='auto' ? detectTool(txt) : sel;
+    if (!txt.trim()) return {tool:sel, resolved, events:[]};
+    let events=[]; try{ events=(TOOLS[resolved]||TOOLS.lines).parse(txt); }catch(e){ events=[]; }
+    return {tool:sel, resolved, events};
   }
   function updatePreview(){
-    const {tool,events}=currentParse();
+    const {tool,resolved,events}=currentParse();
     const withT=events.filter(e=>e.t!=null).length;
+    const det = tool==='auto' ? ` · detected <b>${TOOLS[resolved]?.label||resolved}</b>` : '';
     $('#ingest-preview').innerHTML = events.length
-      ? `parsed <b>${events.length}</b> events · <b>${withT}</b> timed · ${new Set(events.map(e=>e.type)).size} types`
-      : (($('#ingest-text').value.trim())?'<b>0</b> parsed — try a different tool/format':'—');
+      ? `parsed <b>${events.length}</b> events · <b>${withT}</b> timed · ${new Set(events.map(e=>e.type)).size} types${det}`
+      : (($('#ingest-text').value.trim())?`<b>0</b> parsed${det} — try another tool`:'—');
   }
   $('#ingest-text').addEventListener('input', updatePreview);
   $('#ingest-tool').addEventListener('change', updatePreview);
   $('#ingest-go').addEventListener('click', ()=>{
-    const {tool,events}=currentParse();
-    ingest(events, { source:tool, gran:$('#ingest-group').value, timelineId:$('#ingest-target').value||null });
+    const {resolved,events}=currentParse();
+    ingest(events, { source:resolved, gran:$('#ingest-group').value, timelineId:$('#ingest-target').value||null });
     closeIngest(); $('#ingest-text').value='';
   });
   $('#ingest-close').addEventListener('click', closeIngest);
@@ -1157,22 +1303,8 @@ function init(){
 
   function readFileInto(f){
     const r=new FileReader();
-    r.onload=()=>{ $('#ingest-text').value=r.result; guessTool(f.name, r.result); updatePreview(); };
+    r.onload=()=>{ $('#ingest-text').value=r.result; $('#ingest-tool').value=detectTool(r.result, f.name); updatePreview(); };
     r.readAsText(f);
-  }
-  function guessTool(name, text){
-    const n=(name||'').toLowerCase(); const sel=$('#ingest-tool');
-    let g=null;
-    if (n.includes('spiderfoot')) g='spiderfoot';
-    else if (n.includes('harvest')) g='theharvester';
-    else if (n.includes('nmap')||/\d+\/(tcp|udp)\s+open/.test(text)) g='nmap';
-    else if (n.includes('amass')) g='amass';
-    else if (n.includes('shodan')) g='shodan';
-    else if (n.includes('whois')) g='whois';
-    else if (n.endsWith('.json')||/^\s*[\[{]/.test(text)) g='json';
-    else if (n.endsWith('.csv')||text.split('\n')[0]?.includes(',')) g='csv';
-    else g='lines';
-    if (g) sel.value=g;
   }
 
   // drag-drop file onto modal
@@ -1193,7 +1325,7 @@ function init(){
   /*  LIVE PIPE (WebSocket → parser → timeline)                       */
   /* ================================================================ */
   let pipe=null, pipeBuf='', pipeTL=null, pipeMode='';
-  const RECON_TOOLS=['nmap','theharvester','amass','whois','dnsrecon','host'];
+  const RECON_TOOLS=['subfinder','amass','dnsx','httpx','nmap','whois','theharvester'];
   function setPipeStatus(cls, msg){ const s=$('#pipe-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
   function setReconStatus(cls, msg){ const s=$('#recon-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
 
@@ -1307,11 +1439,50 @@ function init(){
     const name=$('#save-list').value; if(!name) return;
     const saves=getSaves(); delete saves[name]; lsSet(LS_SAVES,JSON.stringify(saves)); refreshSaveList(); toast('deleted “'+name+'”');
   }
-  function exportBoard(){
-    const data=JSON.stringify(serialize(),null,2);
-    const blob=new Blob([data],{type:'application/json'});
-    const a=el('a',{href:URL.createObjectURL(blob), download:(($('#save-name').value||'holotable')+'.json')});
-    document.body.appendChild(a); a.click(); a.remove(); toast('exported .json');
+  function baseName(){ return ($('#save-name').value||'holotable').replace(/[^\w.-]+/g,'_'); }
+  function download(name, text, mime){
+    const blob=new Blob([text],{type:mime||'text/plain'});
+    const a=el('a',{href:URL.createObjectURL(blob), download:name});
+    document.body.appendChild(a); a.click(); setTimeout(()=>{ a.remove(); URL.revokeObjectURL(a.href); },0);
+  }
+  function allEvents(){
+    const out=[];
+    for (const tl of ST.timelines) for (const p of (tl.points||[])) for (const b of (p.boxes||[]))
+      out.push({timeline:tl.title||'', t:p.t, type:b.type||'', module:b.module||'', data:b.data||'', source:b.source||''});
+    return out;
+  }
+  const csvCell=s=>{ s=String(s==null?'':s); return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const mdCell=s=>String(s==null?'':s).replace(/\|/g,'\\|').replace(/[\r\n]+/g,' ');
+
+  function exportBoard(){ download(baseName()+'.json', JSON.stringify(serialize(),null,2), 'application/json'); toast('exported board .json'); }
+  function exportCSV(){
+    const rows=[['timeline','timestamp','type','module','data','source']];
+    allEvents().forEach(e=> rows.push([e.timeline, e.t!=null?fmtTime(e.t):'', e.type, e.module, e.data, e.source]));
+    download(baseName()+'.csv', rows.map(r=>r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
+    toast('exported events .csv');
+  }
+  function exportMaltego(){
+    const map={ip:'maltego.IPv4Address',ipv6:'maltego.IPv6Address',domain:'maltego.Domain',email:'maltego.EmailAddress',url:'maltego.URL',phone:'maltego.PhoneNumber',port:'maltego.Service',asn:'maltego.AS','hash-md5':'maltego.Hash','hash-sha1':'maltego.Hash','hash-sha256':'maltego.Hash',cve:'maltego.Vulnerability'};
+    const rows=[['entity','value','source','module','timestamp']];
+    allEvents().forEach(e=> rows.push([ map[e.type]||'maltego.Phrase', e.data, e.source, e.module, e.t!=null?fmtTime(e.t):'' ]));
+    download(baseName()+'-maltego.csv', rows.map(r=>r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
+    toast('exported Maltego .csv');
+  }
+  function exportMarkdown(){
+    const evAll=allEvents();
+    const out=['# OSINT Holotable — '+baseName(), '', '_generated '+new Date().toISOString()+' · '+evAll.length+' events_', ''];
+    const counts={}; evAll.forEach(e=>counts[e.source]=(counts[e.source]||0)+1);
+    out.push('## Sources',''); Object.entries(counts).sort((a,b)=>b[1]-a[1]).forEach(([s,n])=>out.push(`- **${s}** — ${n}`)); out.push('');
+    for (const tl of ST.timelines){
+      out.push('## '+(tl.title||'timeline'),'', '| time | type | data | module | source |','|---|---|---|---|---|');
+      const evs=[]; (tl.points||[]).forEach(p=>(p.boxes||[]).forEach(b=>evs.push(Object.assign({t:p.t},b))));
+      evs.sort((a,b)=>(a.t==null?-1:b.t==null?1:a.t-b.t));
+      evs.forEach(e=>out.push(`| ${e.t!=null?fmtTime(e.t):''} | ${mdCell(e.type)} | ${mdCell(e.data)} | ${mdCell(e.module)} | ${e.source||''} |`));
+      out.push('');
+    }
+    if (ST.links.length){ out.push('## Linked events',''); ST.links.forEach(l=>{ const a=findBox(l.from), b=findBox(l.to); if(a&&b) out.push(`- ${mdCell(a.data)} ↔ ${mdCell(b.data)}`); }); out.push(''); }
+    download(baseName()+'.md', out.join('\n'), 'text/markdown');
+    toast('exported report .md');
   }
   function importBoard(file){
     const r=new FileReader();
@@ -1321,7 +1492,15 @@ function init(){
   $('#save-btn').addEventListener('click', saveBoard);
   $('#save-list').addEventListener('change', e=>{ if(e.target.value) loadBoard(e.target.value); });
   $('#del-save').addEventListener('click', delSave);
-  $('#export-btn').addEventListener('click', exportBoard);
+  $('#export-btn').addEventListener('click', e=>{
+    const r=e.currentTarget.getBoundingClientRect();
+    showCtx(r.left, r.bottom+4, [
+      {label:'Board (.json)', key:'state', fn:exportBoard},
+      {label:'Events (.csv)', key:'flat', fn:exportCSV},
+      {label:'Maltego (.csv)', key:'graph', fn:exportMaltego},
+      {label:'Report (.md)', key:'doc', fn:exportMarkdown},
+    ]);
+  });
   $('#import-btn').addEventListener('click', ()=>$('#import-file').click());
   $('#import-file').addEventListener('change', e=>{ const f=e.target.files[0]; if(f) importBoard(f); e.target.value=''; });
 
@@ -1347,7 +1526,8 @@ function init(){
   // quick-ingest chips
   function renderQuickTools(){
     const q=$('#quick-tools'); q.textContent='';
-    ['spiderfoot','theharvester','nmap','amass','shodan','whois','json','csv','lines'].forEach(k=>{
+    ['auto','spiderfoot','nmap','masscan','amass','subfinder','httpx','dnsx','nuclei','shodan','theharvester','whois','urls','maltego','secrets','json','csv'].forEach(k=>{
+      if(!TOOLS[k]) return;
       q.appendChild(el('span',{class:'qt', style:`color:${TOOLS[k].color}`, text:TOOLS[k].label, onclick:()=>openIngest(k)}));
     });
   }
@@ -1450,6 +1630,7 @@ if (typeof module !== 'undefined' && module.exports){
     parseTime, fmtTime, toLocalInput, fromLocalInput, bucketMs, classify, parseCSV, headerIndex,
     parseSpiderfoot, parseCSVGeneric, parseJSONGeneric, parseHarvester, parseNmap, parseAmass,
     parseShodan, parseWhois, parseDns, parseLines, flattenJSON,
+    parseHttpx, parseNuclei, parseMasscan, parseDnsx, parseSubdomains, parseUrls, parseSecrets, detectTool,
     eventsToPoints, layoutPoints, sourceColor, TOOLS,
   };
 }

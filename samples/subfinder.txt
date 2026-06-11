@@ -1,0 +1,6 @@
+www.target.example.com
+mail.target.example.com
+vpn.target.example.com
+api.target.example.com
+dev.target.example.com
+staging.target.example.com

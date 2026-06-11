@@ -53,7 +53,32 @@ const simChecks = [
   ['amass', R.simAmass, 'amass', e => e.some(x => /mail\./.test(x.data))],
   ['whois', R.simWhois, 'whois', e => e.some(x => /creation/i.test(x.type) && x.t > 0)],
   ['host', R.simHost, 'dnsrecon', e => e.length > 0],
+  ['subfinder', R.simSubfinder, 'subfinder', e => e.length >= 4 && e.every(x => x.type === 'domain')],
+  ['httpx', R.simHttpx, 'httpx', e => e.some(x => x.type === 'url' && /www\./.test(x.data))],
+  ['dnsx', R.simDnsx, 'dnsx', e => e.some(x => x.type === 'domain') && e.some(x => x.type === 'ip')],
 ];
+
+/* ---- scope allowlist + CIDR ---- */
+ok('inScope: empty scope allows all', R.inScope('anything.com', []));
+ok('inScope: exact domain', R.inScope('target.com', ['target.com']));
+ok('inScope: subdomain of scope', R.inScope('api.target.com', ['target.com']));
+ok('inScope: wildcard entry', R.inScope('api.target.com', ['*.target.com']));
+ok('inScope: out of scope rejected', !R.inScope('evil.com', ['target.com']));
+ok('inScope: sibling not matched', !R.inScope('nottarget.com', ['target.com']));
+ok('inScope: CIDR match', R.inScope('10.0.0.5', ['10.0.0.0/24']));
+ok('inScope: CIDR miss', !R.inScope('10.0.1.5', ['10.0.0.0/24']));
+ok('ipInCidr /32', R.ipInCidr('1.2.3.4', '1.2.3.4/32') && !R.ipInCidr('1.2.3.5', '1.2.3.4/32'));
+ok('parseScope strips comments/blanks', JSON.stringify(R.parseScope('a.com\n# c\n\n b.com ')) === JSON.stringify(['a.com', 'b.com']));
+
+/* ---- new flags parse ---- */
+{
+  const a = R.parseArgs(['--scope', 's.txt', '--timeout', '30', '--concurrency', '4', '--out', '/tmp/o', '--config', 'c.json']);
+  ok('--scope file', a.scopeFile === 's.txt');
+  ok('--timeout sec', a.timeoutSec === 30);
+  ok('--concurrency n', a.concurrency === 4);
+  ok('--out dir', a.outDir === '/tmp/o');
+  ok('--config file', a.configFile === 'c.json');
+}
 for (const [name, sim, tag, check] of simChecks) {
   const text = sim('target.example.com').join('\n');
   const events = A.TOOLS[tag].parse(text);

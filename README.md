@@ -57,20 +57,27 @@ portable `.json` case file to move between machines or commit to a repo.
 
 ## Ingesting tool output
 
-Click **Ingest** (or press **`I`**), pick the tool, paste its output (or drop the
-file), choose a grouping granularity, and choose a target timeline (or a new one).
-Sample exports for every parser live in [`samples/`](samples/).
+Click **Ingest** (or press **`I`**), pick the tool (or leave it on **⚡ Auto-detect**),
+paste its output (or drop the file), choose a grouping granularity, and choose a target
+timeline (or a new one). Sample exports for every parser live in [`samples/`](samples/).
+
+**Auto-detect** sniffs the format from the content and filename, so usually you can just
+paste and go — the preview tells you what it detected.
 
 | Tool | Accepts |
 |------|---------|
 | **SpiderFoot** | CSV export (`Updated, Type, Module, Source, Data` — tolerant of column order/names) |
+| **Nmap / Masscan** | normal, greppable (`-oG`), XML / list / JSON — open ports → events, hostnames + IPs split out |
+| **Subfinder / Amass / assetfinder / sublist3r** | subdomain lists or JSON; Amass `name --> record --> ip` relations |
+| **httpx** | JSONL or text (`url [status] [title] [tech]`) — URL + host + status/tech |
+| **dnsx** | `host [A] [ip]` text or JSONL — domains and resolved records |
+| **Nuclei** | JSONL or text findings — severity becomes the event type, template id the module |
 | **theHarvester** | JSON or the plain-text `[*] … found:` report |
-| **Nmap** | normal output, greppable (`-oG`), or XML — open ports → events, hostnames/IPs split out |
-| **Amass** | host list or the `name --> record --> ip` relation format |
-| **Shodan** | host/search JSON (→ `ip:port` services) or `shodan host` text |
-| **Recon-ng** | CSV export |
+| **Shodan / Censys** | host/search JSON (→ `ip:port` services) or `shodan host` text |
 | **WHOIS** | raw `key: value` text (registrar, creation/expiry dates timed automatically) |
-| **DNSRecon** | JSON / CSV |
+| **URLs (gau / waybackurls / katana)** | one URL per line |
+| **Secrets (gitleaks / trufflehog)** | JSON findings → `secret` events |
+| **Recon-ng / DNSRecon / Maltego** | CSV / JSON exports |
 | **Generic CSV / JSON / Raw lines** | anything else — values are auto-classified (ip, email, domain, url, hash, CVE…) |
 
 Header row count doesn't match what you expected? Paste your exact header row and the
@@ -78,6 +85,15 @@ column aliases can be widened — see `headerIndex()` in `app.js`.
 
 Events are colour-coded by source. The **dock legend** lets you toggle any source's
 visibility; **search** (top bar) dims everything that doesn't match.
+
+### Export — for other tools & reports
+
+**Export ⤓** offers four formats, so the board feeds back into your pipeline:
+
+- **Board (.json)** — the full editable board (re-import with **⤒**).
+- **Events (.csv)** — one row per event (`timeline, timestamp, type, module, data, source`) for grep / spreadsheets / SIEM.
+- **Maltego (.csv)** — entity-typed rows (`maltego.IPv4Address`, `maltego.Domain`, …) ready for Maltego's CSV import.
+- **Report (.md)** — a Markdown brief grouped by timeline, with a source summary and the links you drew.
 
 ---
 
@@ -99,9 +115,34 @@ Then in the page: **dock ▸ RECON ▸ type a target ▸ tick tools ▸ Launch**
 `RECON · <target>` timeline appears and fills as each tool reports; raw lines scroll
 in the console. (Or **dock ▸ LIVE PIPE ▸ connect** to just watch a stream.)
 
-Built-in tools: `nmap`, `theharvester`, `amass`, `whois`, `dnsrecon`, `host` — each
-mapped to its matching parser. Edit the `REGISTRY` in `bridge/pipe-server.js` to add
-more.
+Built-in tools: `subfinder`, `amass`, `dnsx`, `httpx`, `nmap`, `theharvester`, `whois`,
+`dnsrecon`, `host` — each mapped to its matching parser. `node bridge/pipe-server.js --list-tools`
+prints the registry.
+
+### Flags
+
+| flag | what it does |
+|------|--------------|
+| `--exec` / `--ssh user@host` | run real tools locally / over SSH (default is simulate) |
+| `--scope FILE` | allowlist — only targets matching a domain, `*.domain`, or CIDR run ([`samples/scope.txt`](samples/scope.txt)) |
+| `--config FILE` | add custom tools without touching code ([`bridge/tools.example.json`](bridge/tools.example.json)) |
+| `--concurrency N` | run up to N tools at once (default 1) |
+| `--timeout SEC` | kill any tool after SEC seconds |
+| `--out DIR` | save each tool's raw output to `DIR/<target>-<tool>.txt` |
+| `--port N` / `--host H` | bind address (default `127.0.0.1:7842`) |
+| `--list-tools` | print the registry and exit |
+
+Custom tools use a `{target}` placeholder that's substituted as a **single argv element**
+(never a shell string), so the no-injection guarantee holds for them too:
+
+```json
+{ "katana": { "bin": "katana", "args": ["-u", "{target}", "-silent"], "tag": "urls" } }
+```
+
+```bash
+node bridge/pipe-server.js --exec --scope samples/scope.txt \
+     --config bridge/tools.example.json --concurrency 3 --timeout 120 --out ./loot
+```
 
 ### Safety model
 
@@ -116,6 +157,8 @@ engagements only**:
 - **Targets are validated** (domain / IP / CIDR) and every tool runs via `spawn()`
   with an **argv array — no shell** — so a target can never inject a command. A target
   like `evil.com; rm -rf /` is rejected outright.
+- **`--scope` keeps you in bounds** — with an allowlist file, anything outside your
+  authorized domains / CIDRs is refused before a tool ever runs.
 - Binds to **127.0.0.1** by default.
 
 The legacy one-shot stream mode is still available for power users:
@@ -174,15 +217,16 @@ test/recon.cjs          # runner ↔ page integration test
 ### Tests
 
 ```bash
-npm test                                     # pure-helper + runner unit tests (zero deps)
+npm test                                     # 77 parser + 54 runner unit checks (zero deps)
 NODE_PATH=$(npm root -g) npm run test:smoke  # headless-browser smoke test  (needs playwright)
 NODE_PATH=$(npm root -g) npm run test:recon  # runner ↔ page integration   (needs playwright)
 ```
 
-`npm test` covers the parsers (CSV edge cases, header reordering, every tool format),
-time round-trips, bucketing, layout, **and** the runner (target validation incl.
-injection attempts, no-shell argv building, the WebSocket frame codec, and a contract
-check that every simulator's output parses cleanly through the matching page parser).
+`npm test` covers the parsers (CSV edge cases, header reordering, every tool format,
+auto-detection), time round-trips, bucketing, layout, **and** the runner (target
+validation incl. injection attempts, scope/CIDR matching, flag parsing, no-shell argv
+building, the WebSocket frame codec, and a contract check that every simulator's output
+parses cleanly through the matching page parser).
 The browser tests load the real page: `smoke` exercises boot, ingest, free-drag,
 linking, notes, search, zoom, save and undo; `recon` spawns the runner and drives a
 full job through the RECON panel, asserting results flow back and a malicious target is

@@ -1,0 +1,5 @@
+{
+  "katana":  { "bin": "katana", "args": ["-u", "{target}", "-silent"],            "tag": "urls" },
+  "tlsx":    { "bin": "tlsx",    "args": ["-u", "{target}", "-json", "-silent"],  "tag": "json" },
+  "gau":     { "bin": "gau",     "args": ["{target}"],                            "tag": "urls" }
+}
