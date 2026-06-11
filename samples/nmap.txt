@@ -1,0 +1,15 @@
+Nmap scan report for target.example.com (203.0.113.42)
+Host is up (0.021s latency).
+Not shown: 996 closed tcp ports (reset)
+PORT     STATE SERVICE    VERSION
+22/tcp   open  ssh        OpenSSH 8.2p1 Ubuntu 4ubuntu0.5
+80/tcp   open  http       nginx 1.18.0
+443/tcp  open  ssl/https  nginx 1.18.0
+8080/tcp open  http-proxy Squid http proxy 4.10
+3306/tcp closed mysql
+
+Nmap scan report for mail.target.example.com (203.0.113.43)
+PORT    STATE SERVICE
+25/tcp  open  smtp
+587/tcp open  submission
+993/tcp open  imaps

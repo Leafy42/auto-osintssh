@@ -1,0 +1,14 @@
+Domain Name: TARGET.EXAMPLE.COM
+Registry Domain ID: 2336799_DOMAIN_COM-VRSN
+Registrar WHOIS Server: whois.example-registrar.com
+Registrar: Example Registrar, Inc.
+Updated Date: 2023-11-02T07:21:46Z
+Creation Date: 2009-05-14T18:09:11Z
+Registry Expiry Date: 2025-05-14T18:09:11Z
+Registrant Organization: Target Holdings LLC
+Registrant Country: US
+Registrant Email: hostmaster@target.example.com
+Name Server: NS1.TARGET.EXAMPLE.COM
+Name Server: NS2.TARGET.EXAMPLE.COM
+DNSSEC: unsigned
+Domain Status: clientTransferProhibited

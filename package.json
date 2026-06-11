@@ -1,0 +1,14 @@
+{
+  "name": "auto-osintssh",
+  "version": "0.1.0",
+  "description": "OSINT Holotable — a free-floating, MS-Paint-style intel table: multiple timelines that stack events into expandable boxes, multi-tool ingestion (SpiderFoot, Nmap, theHarvester, Amass, Shodan, WHOIS…), and a live CLI pipe. Fully client-side and offline.",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node test/test.js",
+    "test:smoke": "node test/smoke.cjs",
+    "pipe": "node bridge/pipe-server.js"
+  },
+  "keywords": ["osint", "timeline", "spiderfoot", "nmap", "recon", "visualization", "offline"],
+  "license": "MIT",
+  "private": true
+}
