@@ -81,31 +81,45 @@ visibility; **search** (top bar) dims everything that doesn't match.
 
 ---
 
-## Live pipe — stream a scan onto the table
+## Recon runner — launch scans from the table
 
-The optional bridge streams a CLI tool's **stdout** into the table over a local
-WebSocket, so the board fills in as the scan runs. **Zero dependencies** (pure Node),
-and the pipe is **one-way**: the page only *receives* lines, so opening the page can
-never run anything on your machine. You choose the command, on the CLI, for tools you
-are authorized to run.
+`bridge/pipe-server.js` is a **zero-dependency** Node orchestrator. The table can
+hand it a job — a target plus a set of tools — and it runs each tool and streams the
+results back over a WebSocket, live. This is the "pipe into a VNC": pick a target,
+pick tools, watch the board fill.
 
 ```bash
-# synthetic demo feed (no tools needed) — just to see it work
-node bridge/pipe-server.js
-
-# stream a real scan, tagging lines with the parser to use
-node bridge/pipe-server.js --tool nmap  -- nmap -sV -T4 target.example.com
-node bridge/pipe-server.js --tool amass -- amass enum -d target.example.com
-node bridge/pipe-server.js --tool spiderfoot -- tail -f spiderfoot-scan.csv
+node bridge/pipe-server.js                 # SIMULATE (safe) — runs nothing real
+node bridge/pipe-server.js --exec          # run real LOCAL tools
+node bridge/pipe-server.js --ssh user@recon-box   # run the tools over SSH
+node bridge/pipe-server.js --demo          # passive synthetic feed (no jobs)
 ```
 
-Then in the page: **dock ▸ LIVE PIPE ▸ `ws://localhost:7842` ▸ connect**. Parsed
-events land on a `LIVE FEED` timeline; raw lines scroll in the console.
+Then in the page: **dock ▸ RECON ▸ type a target ▸ tick tools ▸ Launch**. A
+`RECON · <target>` timeline appears and fills as each tool reports; raw lines scroll
+in the console. (Or **dock ▸ LIVE PIPE ▸ connect** to just watch a stream.)
 
-> This is the "pipe into a VNC" seam. Today the upstream is a local command's stdout;
-> the same WebSocket message shape (`{tool, line}` / `{tool, events:[…]}`) is exactly
-> what an SSH-driven remote scanner would emit, which is the planned `auto-osintssh`
-> back end.
+Built-in tools: `nmap`, `theharvester`, `amass`, `whois`, `dnsrecon`, `host` — each
+mapped to its matching parser. Edit the `REGISTRY` in `bridge/pipe-server.js` to add
+more.
+
+### Safety model
+
+This is dual-use tooling — the safety rails are deliberate, for **authorized
+engagements only**:
+
+- **Simulate by default.** With no flags the runner executes *nothing* real; it emits
+  realistic synthetic output so the whole pipeline is demonstrable offline. Real
+  execution is an explicit opt-in (`--exec` / `--ssh`).
+- **The page can't run shell.** It can only ask to run tools from a fixed registry
+  against a target. There is no path from the page to an arbitrary command.
+- **Targets are validated** (domain / IP / CIDR) and every tool runs via `spawn()`
+  with an **argv array — no shell** — so a target can never inject a command. A target
+  like `evil.com; rm -rf /` is rejected outright.
+- Binds to **127.0.0.1** by default.
+
+The legacy one-shot stream mode is still available for power users:
+`node bridge/pipe-server.js --tool nmap -- nmap -sV target.example.com`.
 
 ---
 
@@ -121,6 +135,7 @@ events land on a `LIVE FEED` timeline; raw lines scroll in the console.
 | **Link events** | **`L`**, click two boxes (double-click a link to remove) |
 | **Pen / Note** | **`P`** free-draw · **`N`** drop a sticky note |
 | **New timeline** | **`T`** or the toolbar |
+| **Recon** | dock ▸ RECON ▸ target + tools ▸ Launch (drives the runner) |
 | **Undo / redo** | **⌘/Ctrl-Z** · **⌘/Ctrl-Shift-Z** |
 | **Delete** | select + **Delete** · per-item `✕` |
 | **Right-click** | context menu on events / timelines / canvas |
@@ -135,12 +150,15 @@ dropdown. **Export ⤓** / **Import ⤒** move portable `.json` boards.
 One folder, three core files, no framework:
 
 ```
-index.html        # shell / DOM skeleton
-styles.css        # the holographic OSINT theme
-app.js            # engine: camera, render, interaction, parsers, pipe, saves
-bridge/           # optional zero-dependency live-pipe WebSocket server
-samples/          # one realistic export per supported tool
-test/             # unit tests (pure) + headless browser smoke test
+index.html              # shell / DOM skeleton
+styles.css              # the holographic OSINT theme
+app.js                  # engine: camera, render, interaction, parsers, pipe, saves
+bridge/pipe-server.js   # zero-dependency recon runner + WebSocket bridge
+samples/                # one realistic export per supported tool
+test/test.js            # pure-helper unit tests (parsers, time, layout)
+test/runner.test.cjs    # runner unit tests (validation, argv, frame codec, sim↔parser)
+test/smoke.cjs          # headless-browser smoke test (UI flows)
+test/recon.cjs          # runner ↔ page integration test
 ```
 
 - The **camera** is a `{x, y, zoom}` transform on a `#world` div; the grid is drawn on
@@ -156,13 +174,19 @@ test/             # unit tests (pure) + headless browser smoke test
 ### Tests
 
 ```bash
-npm test                                   # pure-helper unit tests (zero deps)
-NODE_PATH=$(npm root -g) npm run test:smoke # headless-browser smoke test (needs playwright)
+npm test                                     # pure-helper + runner unit tests (zero deps)
+NODE_PATH=$(npm root -g) npm run test:smoke  # headless-browser smoke test  (needs playwright)
+NODE_PATH=$(npm root -g) npm run test:recon  # runner ↔ page integration   (needs playwright)
 ```
 
-`npm test` covers the parsers (incl. CSV edge cases, header reordering, tool formats),
-time round-trips, bucketing and anti-overlap layout. The smoke test loads the real page
-and exercises boot, ingest, the free-drag, linking, notes, search, zoom, save and undo.
+`npm test` covers the parsers (CSV edge cases, header reordering, every tool format),
+time round-trips, bucketing, layout, **and** the runner (target validation incl.
+injection attempts, no-shell argv building, the WebSocket frame codec, and a contract
+check that every simulator's output parses cleanly through the matching page parser).
+The browser tests load the real page: `smoke` exercises boot, ingest, free-drag,
+linking, notes, search, zoom, save and undo; `recon` spawns the runner and drives a
+full job through the RECON panel, asserting results flow back and a malicious target is
+rejected.
 
 ---
 
@@ -172,7 +196,8 @@ and exercises boot, ingest, the free-drag, linking, notes, search, zoom, save an
   the whole table is now the scroll surface, so timelines never run out of room.
 - **Granularity is applied at ingest time** (per import), deliberately, so it never
   re-buckets and fights your manual point/timestamp edits afterward.
-- Next seams: SSH-driven remote scan runner feeding the same pipe; per-timeline
-  time-proportional spacing as a toggle; multi-select drag.
+- The recon runner already executes tools **locally or over SSH** (`--ssh user@host`)
+  and streams results back. Next seams: per-timeline time-proportional spacing as a
+  toggle; multi-select drag; parallel tool execution.
 
 Authorized / defensive use only — for your own engagements, CTFs, and research.

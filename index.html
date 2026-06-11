@@ -78,14 +78,21 @@
   <div class="panel-body" id="dock-body">
     <div id="legend" class="legend"></div>
     <div class="dock-section">
+      <div class="dock-title">RECON ▸ run tools at a target</div>
+      <input id="recon-target" type="text" placeholder="target.example.com / 203.0.113.0/24" spellcheck="false" autocomplete="off" />
+      <div id="recon-tools" class="recon-tools"></div>
+      <button class="t-btn accent recon-go" id="recon-launch" title="Launch the selected tools (connects the pipe if needed)">▶ Launch recon</button>
+      <div id="recon-status" class="pipe-status off">runner offline — Launch will connect</div>
+    </div>
+    <div class="dock-section">
       <div class="dock-title">QUICK INGEST</div>
       <div id="quick-tools" class="quick-tools"></div>
     </div>
     <div class="dock-section">
-      <div class="dock-title">LIVE PIPE</div>
+      <div class="dock-title">LIVE PIPE ▸ watch a raw stream</div>
       <div class="pipe-ctl">
         <input id="pipe-url" type="text" value="ws://localhost:7842" spellcheck="false" />
-        <button class="t-btn" id="pipe-connect" title="Connect to a local pipe bridge">⇄ connect</button>
+        <button class="t-btn" id="pipe-connect" title="Connect to a local runner / pipe bridge">⇄ connect</button>
       </div>
       <div id="pipe-status" class="pipe-status off">offline · paste mode</div>
     </div>

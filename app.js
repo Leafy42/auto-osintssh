@@ -1192,35 +1192,49 @@ function init(){
   /* ================================================================ */
   /*  LIVE PIPE (WebSocket → parser → timeline)                       */
   /* ================================================================ */
-  let pipe=null, pipeBuf='', pipeTL=null;
-  function setPipeStatus(cls, msg){ const s=$('#pipe-status'); s.className='pipe-status '+cls; s.textContent=msg; }
-  function connectPipe(){
+  let pipe=null, pipeBuf='', pipeTL=null, pipeMode='';
+  const RECON_TOOLS=['nmap','theharvester','amass','whois','dnsrecon','host'];
+  function setPipeStatus(cls, msg){ const s=$('#pipe-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
+  function setReconStatus(cls, msg){ const s=$('#recon-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
+
+  function connectPipe(onOpen){
     const url=$('#pipe-url').value.trim();
-    if (pipe){ try{pipe.close();}catch(e){} pipe=null; }
+    if (pipe && pipe.readyState<=1){ if(onOpen) (pipe.readyState===1?onOpen():pipe.addEventListener('open',onOpen,{once:true})); return; }
     if (typeof WebSocket==='undefined'){ setPipeStatus('err','no WebSocket'); return; }
-    setPipeStatus('off','connecting…');
+    setPipeStatus('off','connecting…'); setReconStatus('off','connecting…');
     try{ pipe=new WebSocket(url); }catch(e){ setPipeStatus('err','bad url'); return; }
-    pipe.onopen=()=>{ setPipeStatus('on','● live · '+url); conLine('pipe connected '+url,'sys'); pipeTL=null; };
-    pipe.onclose=()=>{ setPipeStatus('off','offline · paste mode'); pipe=null; };
-    pipe.onerror=()=>{ setPipeStatus('err','connect failed — run bridge/pipe-server.js'); };
+    pipe.onopen=()=>{ setPipeStatus('on','● live · '+url); conLine('pipe connected '+url,'sys'); pipeTL=null; if(onOpen) onOpen(); };
+    pipe.onclose=()=>{ setPipeStatus('off','offline · paste mode'); setReconStatus('off','runner offline — Launch will connect'); pipe=null; };
+    pipe.onerror=()=>{ setPipeStatus('err','connect failed — run bridge/pipe-server.js'); setReconStatus('err','no runner — start bridge/pipe-server.js'); };
     pipe.onmessage=ev=>{
-      let payload=ev.data;
       try{ const j=JSON.parse(ev.data); if(j&&typeof j==='object'){ handlePipeJSON(j); return; } }catch(_){}
-      handlePipeText(String(payload));
+      handlePipeText(String(ev.data));
     };
   }
+  function sendPipe(msg){
+    if (pipe && pipe.readyState===1){ pipe.send(JSON.stringify(msg)); return true; }
+    connectPipe(()=>{ try{ pipe.send(JSON.stringify(msg)); }catch(e){} });
+    return false;
+  }
+
   function ensurePipeTL(){
     if (pipeTL && findTL(pipeTL.id)) return pipeTL;
     pipeTL = addTimeline({ title:'LIVE FEED', color:'#27e8a7' });
     renderObjects(); return pipeTL;
   }
+  // dispatch the runner protocol: hello | run-start | log | result | run-done, plus legacy {tool,line|events}
   function handlePipeJSON(j){
-    // each message is one complete unit: {tool, line} | {tool, events:[...]} | raw event
+    if (j.type==='hello'){ pipeMode=j.mode||''; const exec=j.exec; setPipeStatus('on','● '+(exec?'exec':'simulate')+' · runner'); setReconStatus('on','● runner ready · '+(exec?'LIVE EXEC':'simulate')); return; }
+    if (j.type==='run-start'){ snapshot(); pipeTL = addTimeline({ title:'RECON · '+j.target, color:'#27e8a7' }); renderObjects(); fitView(); setReconStatus('on','● running '+j.target+'…'); conLine('# recon '+j.target+' :: '+(j.tools||[]).join(', '),'sys','runner'); return; }
+    if (j.type==='run-done'){ setReconStatus('on','● done · '+j.target); toast('recon complete: '+j.target); pipeTL=null; renderLegend(); return; }
+    if (j.type==='log'){ const line=String(j.line||''); if(line.trim()) conLine(line.length>140?line.slice(0,140)+'…':line, /^#/.test(line)?'sys':'', j.tool); return; }
+    if (j.type==='result'){ const tool=j.tool||'lines'; let events=[]; try{ events=TOOLS[tool].parse(String(j.text||'')); }catch(e){} pipeIngest(events, tool); return; }
+    // legacy
     const tool=j.tool||'lines';
     if (Array.isArray(j.events)){ pipeIngest(j.events, tool); return; }
     if (j.line!=null){
       const line=String(j.line);
-      if (!line.trim() || /^#/.test(line)){ conLine(line.trim()||' ','sys',tool); return; }  // comments → console only
+      if (!line.trim() || /^#/.test(line)){ conLine(line.trim()||' ','sys',tool); return; }
       let events=[]; try{ events=TOOLS[tool].parse(line); }catch(e){}
       if (events.length) pipeIngest(events, tool); else conLine(line,'',tool);
       return;
@@ -1237,14 +1251,36 @@ function init(){
   }
   function pipeIngest(events, tool){
     if (!events.length) return;
-    const tl=ensurePipeTL(tool);
+    const tl=ensurePipeTL();
     const pts=eventsToPoints(events,'minute');
     const byT=new Map(); tl.points.forEach(p=>{ if(p.t!=null) byT.set(p.t,p); });
     for (const np of pts){ if(np.t!=null&&byT.has(np.t)) byT.get(np.t).boxes.push(...np.boxes); else { tl.points.push(np); if(np.t!=null) byT.set(np.t,np);} }
     tl.points.sort((a,b)=>(a.t==null?-1:b.t==null?1:a.t-b.t));
     renderObjects(); flashConsole(events, tool); autosaveSoon();
   }
-  $('#pipe-connect').addEventListener('click', connectPipe);
+
+  function renderReconTools(){
+    const box=$('#recon-tools'); if(!box) return; box.textContent='';
+    RECON_TOOLS.forEach((k,i)=>{
+      const lab=el('label',{class:i<3?'on':'', style:`--c:${sourceColor(k)}`});
+      const cb=el('input',{type:'checkbox', value:k}); if(i<3) cb.checked=true;
+      cb.addEventListener('change',()=>lab.classList.toggle('on',cb.checked));
+      lab.appendChild(cb); lab.appendChild(document.createTextNode(TOOLS[k]?.label||k));
+      box.appendChild(lab);
+    });
+  }
+  function launchRecon(){
+    const target=$('#recon-target').value.trim();
+    const tools=$$('#recon-tools input:checked').map(c=>c.value);
+    if (!target){ setReconStatus('err','enter a target'); $('#recon-target').focus(); return; }
+    if (!tools.length){ setReconStatus('err','pick at least one tool'); return; }
+    setReconStatus('off','launching '+target+'…');
+    const ok=sendPipe({type:'run', target, tools});
+    if (!ok) conLine('# connecting to runner, then launching '+target,'sys','runner');
+  }
+  $('#pipe-connect').addEventListener('click', ()=>connectPipe());
+  $('#recon-launch').addEventListener('click', launchRecon);
+  $('#recon-target').addEventListener('keydown', e=>{ if(e.key==='Enter') launchRecon(); });
 
   /* ================================================================ */
   /*  SAVES / EXPORT / IMPORT                                         */
@@ -1393,6 +1429,7 @@ function init(){
 
   fillToolSelect($('#ingest-tool'));
   renderQuickTools();
+  renderReconTools();
   refreshSaveList();
   setMode('select');
   renderObjects();
