@@ -943,16 +943,21 @@ function init(){
       if (g==='note'){ startObjectDrag(e, grip.closest('.note').dataset.id, 'note'); return; }
     }
 
-    // clicking a box (select)
+    // clicking a box → select it (boxes are moved via their own ⠿ grip)
     const bx = t.closest('.box');
-    if (bx){ selectOnly(bx.dataset.bid, e.shiftKey); renderObjects(); }
+    if (bx){ selectOnly(bx.dataset.bid, e.shiftKey); renderObjects(); return; }
 
-    // clicking a timeline header (not grip/button) → move it too
-    const head = t.closest('.tl-header');
-    if (head && !t.closest('button')){ startObjectDrag(e, head.closest('.timeline').dataset.id, 'tl'); return; }
+    const onTL = t.closest('.timeline'), onNote = t.closest('.note');
 
-    // otherwise: pan (pan mode, middle-ish, space held, or empty canvas in select)
-    const onEmpty = !t.closest('.timeline') && !t.closest('.note');
+    // SELECT mode: grab a timeline (or note) anywhere on its body — minus its
+    // interactive bits (boxes, dots, buttons) — to move the whole thing freely.
+    if (mode==='select' && !spaceDown){
+      if (onNote && !t.closest('button')){ startObjectDrag(e, onNote.dataset.id, 'note'); return; }
+      if (onTL && !t.closest('button') && !t.closest('.dot') && !t.closest('.add-box')){ startObjectDrag(e, onTL.dataset.id, 'tl'); return; }
+    }
+
+    // empty canvas: pan (Shift = marquee-select); pan mode / held Space pan anywhere
+    const onEmpty = !onTL && !onNote;
     if (mode==='pan' || spaceDown || (onEmpty && mode==='select' && !e.shiftKey)){ startPan(e); return; }
     if (onEmpty && mode==='select' && e.shiftKey){ startMarquee(e); return; }
   }
@@ -968,6 +973,7 @@ function init(){
     if (!obj) return;
     snapshot();
     drag.kind='object'; drag.obj=obj; drag.sx=e.clientX; drag.sy=e.clientY; drag.ox=obj.x; drag.oy=obj.y;
+    document.body.classList.add('dragging-obj');
     selectOnly(id); capture(e);
   }
   /* ---- marquee select ---- */
@@ -1046,7 +1052,7 @@ function init(){
   function onUp(e){
     const k=drag.kind;
     viewport.classList.remove('panning');
-    if (k==='object'){ renderObjects(); autosave(); }
+    if (k==='object'){ document.body.classList.remove('dragging-obj'); renderObjects(); autosave(); }
     if (k==='box'){
       document.body.classList.remove('dragging-box');
       if (drag.clone) drag.clone.remove();
@@ -1508,7 +1514,14 @@ function init(){
   /*  TOOLBAR + DOCK wiring                                           */
   /* ================================================================ */
   $$('#modes .mode').forEach(b=> b.addEventListener('click', ()=>setMode(b.dataset.mode)));
-  $('#add-timeline').addEventListener('click', ()=>{ snapshot(); addTimeline(); renderObjects(); autosave(); fitView(); });
+  // drop a new timeline in the middle of what you're currently looking at,
+  // lightly staggered so repeats don't overlap — then it's yours to drag anywhere.
+  function addTimelineHere(){
+    const c = screenToWorld(innerWidth/2, innerHeight/2);
+    const off = (ST.timelines.length % 6) * 26;
+    return addTimeline({ x: c.x - 180 + off, y: c.y - 70 + off });
+  }
+  $('#add-timeline').addEventListener('click', ()=>{ snapshot(); addTimelineHere(); renderObjects(); autosave(); });
   $('#open-ingest').addEventListener('click', ()=>openIngest());
   $('#expand-all').addEventListener('click', ()=>{ ST.timelines.forEach(tl=>tl.points.forEach(p=>p.expanded=true)); renderObjects(); });
   $('#collapse-all').addEventListener('click', ()=>{ ST.timelines.forEach(tl=>tl.points.forEach(p=>p.expanded=false)); renderObjects(); });
@@ -1552,7 +1565,7 @@ function init(){
       case 'l': setMode('link'); break;
       case 'p': setMode('pen'); break;
       case 'n': setMode('note'); break;
-      case 't': snapshot(); addTimeline(); renderObjects(); autosave(); break;
+      case 't': snapshot(); addTimelineHere(); renderObjects(); autosave(); break;
       case 'i': openIngest(); break;
       case 'e': ST.timelines.forEach(tl=>tl.points.forEach(p=>p.expanded=true)); renderObjects(); break;
       case 'c': ST.timelines.forEach(tl=>tl.points.forEach(p=>p.expanded=false)); renderObjects(); break;
@@ -1585,7 +1598,7 @@ function init(){
     mk(12,[['domain','amass','vpn.target.example.com','amass'],['domain','amass','mail.target.example.com','amass']]);
     mk(2,[['email','theharvester','j.doe@target.example.com','theharvester']]);
     tl.points.sort((a,b)=>a.t-b.t);
-    ST.notes.push({id:uid('nt'), x:560, y:-40, tone:'cyan', text:'Ingest ▸ pick a tool ▸ paste output. Drag the ⠿ on any event to move it between points or timelines. Press E to fan every stack open, F to frame the table.'});
+    ST.notes.push({id:uid('nt'), x:560, y:-40, tone:'cyan', text:'Drag a timeline anywhere on the table to lay out a scenario. Ingest ▸ pick a tool ▸ paste output. Drag the ⠿ on any event to move it between points. Press E to fan every stack open, F to frame the table.'});
   }
 
   // restore autosave or seed
