@@ -1,0 +1,5 @@
+[
+  { "ip_str": "203.0.113.42", "port": 22, "org": "Example Hosting", "hostnames": ["target.example.com"], "timestamp": "2024-03-10T11:04:21.000000", "data": "SSH-2.0-OpenSSH_8.2" },
+  { "ip_str": "203.0.113.42", "port": 443, "org": "Example Hosting", "hostnames": ["target.example.com"], "timestamp": "2024-03-10T11:05:02.000000", "data": "HTTP/1.1 200 OK\r\nServer: nginx" },
+  { "ip_str": "203.0.113.44", "port": 1194, "org": "Example Hosting", "hostnames": ["vpn.target.example.com"], "timestamp": "2024-03-10T11:06:48.000000", "data": "OpenVPN" }
+]

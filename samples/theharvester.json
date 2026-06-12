@@ -1,0 +1,21 @@
+{
+  "emails": [
+    "admin@target.example.com",
+    "j.doe@target.example.com",
+    "support@target.example.com"
+  ],
+  "hosts": [
+    "www.target.example.com:203.0.113.42",
+    "vpn.target.example.com:203.0.113.44",
+    "mail.target.example.com:203.0.113.43"
+  ],
+  "ips": [
+    "203.0.113.42",
+    "203.0.113.43",
+    "203.0.113.44"
+  ],
+  "interesting_urls": [
+    "https://target.example.com/login",
+    "https://vpn.target.example.com"
+  ]
+}

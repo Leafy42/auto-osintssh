@@ -1,0 +1,5 @@
+# scope allowlist — one entry per line. Domains match themselves + subdomains.
+# Use *.domain for clarity, or a CIDR for IP ranges. Lines starting with # are ignored.
+target.example.com
+*.target.example.com
+203.0.113.0/24

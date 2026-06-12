@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+<title>OSINT HOLOTABLE</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============ HOLOGRAPHIC GRID (viewport-fixed, redrawn from camera) ============ -->
+<canvas id="grid"></canvas>
+<div id="vignette"></div>
+
+<!-- ============ THE FREE-FLOATING WORLD ============ -->
+<div id="viewport">
+  <div id="world">
+    <!-- link + freehand layer lives in world space so it pans/zooms with everything -->
+    <svg id="layer-draw" xmlns="http://www.w3.org/2000/svg"></svg>
+    <!-- timelines + notes are absolutely positioned children -->
+    <div id="objects"></div>
+    <!-- marquee + live-drag overlay -->
+    <div id="overlay"></div>
+  </div>
+</div>
+
+<!-- ============ TOP TOOLBAR ============ -->
+<header id="toolbar">
+  <div class="brand" title="OSINT Holotable">
+    <span class="logo">◈</span><span class="brand-name">HOLOTABLE</span>
+  </div>
+
+  <div class="tool-group" id="modes" role="group" aria-label="Tools">
+    <button class="t-btn mode active" data-mode="select" title="Select / move (V)">▦<span>Select</span></button>
+    <button class="t-btn mode" data-mode="pan" title="Pan the table (H / hold Space)">✥<span>Pan</span></button>
+    <button class="t-btn mode" data-mode="link" title="Link two events (L)">⌥<span>Link</span></button>
+    <button class="t-btn mode" data-mode="pen" title="Free-draw on the table (P)">✎<span>Pen</span></button>
+    <button class="t-btn mode" data-mode="note" title="Drop a sticky note (N)">⊞<span>Note</span></button>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="tool-group">
+    <button class="t-btn" id="add-timeline" title="New timeline (T)">＋<span>Timeline</span></button>
+    <button class="t-btn accent" id="open-ingest" title="Ingest tool output (I)">⇲<span>Ingest</span></button>
+    <button class="t-btn" id="expand-all" title="Fan every stack open (E)">⤢<span>Expand</span></button>
+    <button class="t-btn" id="collapse-all" title="Restack everything (C)">⤡<span>Collapse</span></button>
+    <button class="t-btn" id="fit" title="Frame everything (F)">⊡<span>Fit</span></button>
+  </div>
+
+  <div class="sep"></div>
+
+  <div class="search-wrap">
+    <span class="s-ico">⌕</span>
+    <input id="search" type="text" placeholder="filter events…" autocomplete="off" spellcheck="false" />
+    <span id="search-count"></span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <div class="tool-group saves">
+    <input id="save-name" type="text" placeholder="case name" autocomplete="off" spellcheck="false" />
+    <button class="t-btn" id="save-btn" title="Save this board">⛁<span>Save</span></button>
+    <select id="save-list" title="Load a saved board"><option value="">load…</option></select>
+    <button class="t-btn" id="del-save" title="Delete selected save">🗑</button>
+    <button class="t-btn" id="export-btn" title="Export board to .json">⤓</button>
+    <button class="t-btn" id="import-btn" title="Import a .json board">⤒</button>
+    <input id="import-file" type="file" accept=".json,application/json" hidden />
+  </div>
+</header>
+
+<!-- ============ LEFT DOCK : SOURCES / TOOLS ============ -->
+<aside id="dock" class="panel">
+  <div class="panel-head">
+    <span>SOURCES</span>
+    <button class="mini" id="dock-collapse" title="Collapse dock">‹</button>
+  </div>
+  <div class="panel-body" id="dock-body">
+    <div id="legend" class="legend"></div>
+    <div class="dock-section">
+      <div class="dock-title">RECON ▸ run tools at a target</div>
+      <input id="recon-target" type="text" placeholder="target.example.com / 203.0.113.0/24" spellcheck="false" autocomplete="off" />
+      <div id="recon-tools" class="recon-tools"></div>
+      <button class="t-btn accent recon-go" id="recon-launch" title="Launch the selected tools (connects the pipe if needed)">▶ Launch recon</button>
+      <div id="recon-status" class="pipe-status off">runner offline — Launch will connect</div>
+    </div>
+    <div class="dock-section">
+      <div class="dock-title">QUICK INGEST</div>
+      <div id="quick-tools" class="quick-tools"></div>
+    </div>
+    <div class="dock-section">
+      <div class="dock-title">LIVE PIPE ▸ watch a raw stream</div>
+      <div class="pipe-ctl">
+        <input id="pipe-url" type="text" value="ws://localhost:7842" spellcheck="false" />
+        <button class="t-btn" id="pipe-connect" title="Connect to a local runner / pipe bridge">⇄ connect</button>
+      </div>
+      <div id="pipe-status" class="pipe-status off">offline · paste mode</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ============ BOTTOM CONSOLE : STREAM FEED ============ -->
+<section id="console" class="panel collapsed">
+  <div class="panel-head" id="console-head">
+    <span>CONSOLE</span>
+    <span class="con-stats" id="con-stats"></span>
+    <button class="mini" id="console-toggle" title="Toggle console">▴</button>
+  </div>
+  <div class="panel-body">
+    <div id="console-feed" class="console-feed"></div>
+  </div>
+</section>
+
+<!-- ============ INGEST MODAL ============ -->
+<div id="ingest" class="modal-back" hidden>
+  <div class="modal">
+    <div class="modal-head">
+      <span>⇲ INGEST &nbsp;//&nbsp; pipe a tool into the table</span>
+      <button class="mini" id="ingest-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="ingest-row">
+        <label>Tool</label>
+        <select id="ingest-tool"></select>
+        <label>Group by</label>
+        <select id="ingest-group">
+          <option value="raw">raw (per row)</option>
+          <option value="second">second</option>
+          <option value="minute" selected>minute</option>
+          <option value="hour">hour</option>
+          <option value="day">day</option>
+        </select>
+        <label>Into</label>
+        <select id="ingest-target"></select>
+      </div>
+      <div id="dropzone" class="dropzone-big">
+        <textarea id="ingest-text" spellcheck="false"
+          placeholder="Paste CLI output / CSV / JSON here — or drop a file…"></textarea>
+        <div class="drop-hint">drop file</div>
+      </div>
+      <div class="ingest-foot">
+        <span id="ingest-preview" class="preview">—</span>
+        <div class="grow"></div>
+        <button class="t-btn" id="ingest-file-btn">choose file…</button>
+        <input id="ingest-file" type="file" hidden />
+        <button class="t-btn accent" id="ingest-go">⇲ ingest</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- context menu + toast -->
+<div id="ctx" class="ctx" hidden></div>
+<div id="toast" class="toast" hidden></div>
+
+<!-- help hint -->
+<div id="hint" class="hint">
+  drag empty space to pan · scroll to zoom · <b>V</b> select · <b>H</b> pan · <b>L</b> link · <b>P</b> pen · <b>N</b> note · <b>E</b> expand · <b>F</b> fit · <b>⌘Z</b> undo
+  <button id="hint-x">✕</button>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+{"template-id":"tech-detect","host":"https://www.target.example.com","matched-at":"https://www.target.example.com","info":{"name":"Nginx","severity":"info"}}
+{"template-id":"CVE-2021-44228","host":"https://api.target.example.com","matched-at":"https://api.target.example.com/login","info":{"name":"Log4j RCE","severity":"critical"}}
+{"template-id":"exposed-git","host":"https://dev.target.example.com","matched-at":"https://dev.target.example.com/.git/config","info":{"name":"Exposed .git","severity":"medium"}}
