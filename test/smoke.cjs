@@ -61,6 +61,21 @@ const ok = (n, c, extra) => { if (c) console.log('  ok  ' + n); else { fails++; 
     ok('box moved to target point', movedTo === d.p1id, `landed in ${movedTo} want ${d.p1id}`);
   }
 
+  // ---- 2b. drag a whole TIMELINE by its body (not just the header) ----
+  const td = await page.evaluate(() => {
+    const tl = document.querySelector('.timeline');
+    const rail = tl.querySelector('.tl-rail').getBoundingClientRect();
+    const st = window.holotable.state.timelines.find(t => t.id === tl.dataset.id);
+    return { id: tl.dataset.id, gx: rail.left + 8, gy: rail.top + 8, x0: st.x, y0: st.y }; // top-left rail = background
+  });
+  await page.mouse.move(td.gx, td.gy);
+  await page.mouse.down();
+  await page.mouse.move(td.gx + 170, td.gy + 95, { steps: 6 });
+  await page.mouse.up();
+  await page.waitForTimeout(80);
+  const tmoved = await page.evaluate(id => { const s = window.holotable.state.timelines.find(t => t.id === id); return { x: s.x, y: s.y }; }, td.id);
+  ok('timeline drags by its body', Math.abs(tmoved.x - td.x0) > 90 && Math.abs(tmoved.y - td.y0) > 50, JSON.stringify({ before: { x: td.x0, y: td.y0 }, after: tmoved }));
+
   // ---- 3. link two events ----
   await page.keyboard.press('l');
   const lb = await page.evaluate(() => {
