@@ -531,7 +531,7 @@ function eventsToPoints(events, gran){
 }
 
 /* --------------------------------------------------- point layout (x) */
-const PT_PAD = 130, PT_GAP = 175;
+const PT_PAD = 130, PT_GAP = 212;   // > stack width (200px) so expanded stacks never overlap and grips don't cover neighbours' buttons
 function layoutPoints(points){
   points.forEach((p,i)=>{ p.x = PT_PAD + i*PT_GAP; });
   const w = points.length ? PT_PAD + (points.length-1)*PT_GAP + PT_PAD : 360;
@@ -945,7 +945,10 @@ function init(){
 
     // clicking a box → select it (boxes are moved via their own ⠿ grip)
     const bx = t.closest('.box');
-    if (bx){ selectOnly(bx.dataset.bid, e.shiftKey); renderObjects(); return; }
+    if (bx){
+      if (t.closest('[data-act]')) return;   // a box button (delete / link / source) — let its own click handler run
+      selectOnly(bx.dataset.bid, e.shiftKey); renderObjects(); return;
+    }
 
     const onTL = t.closest('.timeline'), onNote = t.closest('.note');
 
@@ -971,8 +974,7 @@ function init(){
   function startObjectDrag(e, id, kind){
     const obj = kind==='tl'?findTL(id):ST.notes.find(n=>n.id===id);
     if (!obj) return;
-    snapshot();
-    drag.kind='object'; drag.obj=obj; drag.sx=e.clientX; drag.sy=e.clientY; drag.ox=obj.x; drag.oy=obj.y;
+    drag.kind='object'; drag.obj=obj; drag.sx=e.clientX; drag.sy=e.clientY; drag.ox=obj.x; drag.oy=obj.y; drag.snapped=false;
     document.body.classList.add('dragging-obj');
     selectOnly(id); capture(e);
   }
@@ -985,7 +987,6 @@ function init(){
   /* ---- drag a box freely between points ---- */
   function startBoxDrag(e, bid){
     const rec = boxIndex.get(bid); if(!rec) return;
-    snapshot();
     drag.kind='box'; drag.bid=bid; drag.src=rec;
     document.body.classList.add('dragging-box');
     const r = rec.el.getBoundingClientRect();
@@ -1017,6 +1018,7 @@ function init(){
       updateWorld(); return;
     }
     if (drag.kind==='object'){
+      if (!drag.snapped){ snapshot(); drag.snapped=true; }   // checkpoint only once a real move begins
       const z=ST.cam.zoom;
       drag.obj.x = drag.ox + (e.clientX-drag.sx)/z;
       drag.obj.y = drag.oy + (e.clientY-drag.sy)/z;
@@ -1049,6 +1051,21 @@ function init(){
   }
 
   window.addEventListener('pointerup', onUp);
+  // if a drag is interrupted (lost capture, OS gesture, touch cancel), reset
+  // cleanly instead of leaving the grab cursor / drag state stuck
+  window.addEventListener('pointercancel', cancelDrag);
+  window.addEventListener('lostpointercapture', ()=>{ if(drag.kind) cancelDrag(); });
+  function cancelDrag(){
+    if (!drag.kind) return;
+    document.body.classList.remove('dragging-obj','dragging-box');
+    viewport.classList.remove('panning');
+    if (drag.clone) drag.clone.remove();
+    if (drag.src) drag.src.el.style.opacity='';
+    $$('.point.drop-hot').forEach(p=>p.classList.remove('drop-hot'));
+    if (drag.node) drag.node.remove();
+    drag.kind=null; drag.obj=null; drag.src=null; drag.clone=null; drag.overPoint=null;
+    renderObjects();
+  }
   function onUp(e){
     const k=drag.kind;
     viewport.classList.remove('panning');
@@ -1071,7 +1088,8 @@ function init(){
 
   function moveBox(bid, tid, pid){
     const rec = boxIndex.get(bid); if(!rec){ renderObjects(); return; }
-    if (rec.p.id===pid){ renderObjects(); return; }              // dropped on same point
+    if (rec.p.id===pid){ renderObjects(); return; }              // dropped on same point — no change, no checkpoint
+    snapshot();                                                   // real cross-point move → checkpoint for undo
     rec.p.boxes = rec.p.boxes.filter(b=>b.id!==bid);
     const tgt = findPoint(tid,pid);
     if (tgt){ tgt.boxes.push(rec.b); }
@@ -1518,7 +1536,8 @@ function init(){
   // lightly staggered so repeats don't overlap — then it's yours to drag anywhere.
   function addTimelineHere(){
     const c = screenToWorld(innerWidth/2, innerHeight/2);
-    const off = (ST.timelines.length % 6) * 26;
+    const k = ST.timelines.length;
+    const off = (k % 6) * 28 + Math.floor(k / 6) * 12;   // diagonal cascade — never lands exactly on a prior one
     return addTimeline({ x: c.x - 180 + off, y: c.y - 70 + off });
   }
   $('#add-timeline').addEventListener('click', ()=>{ snapshot(); addTimelineHere(); renderObjects(); autosave(); });
