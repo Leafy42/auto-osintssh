@@ -76,6 +76,29 @@ const ok = (n, c, extra) => { if (c) console.log('  ok  ' + n); else { fails++; 
   const tmoved = await page.evaluate(id => { const s = window.holotable.state.timelines.find(t => t.id === id); return { x: s.x, y: s.y }; }, td.id);
   ok('timeline drags by its body', Math.abs(tmoved.x - td.x0) > 90 && Math.abs(tmoved.y - td.y0) > 50, JSON.stringify({ before: { x: td.x0, y: td.y0 }, after: tmoved }));
 
+  // ---- 2c. the box ✕ delete button actually deletes (real hovered click, not covered by a neighbour grip) ----
+  const bi = await page.evaluate(() => { const b = document.querySelector('.timeline .box'); const r = b.getBoundingClientRect(); return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, bid: b.dataset.bid }; });
+  await page.mouse.move(bi.cx, bi.cy); await page.waitForTimeout(60);            // hover to reveal ✕
+  const xc = await page.evaluate(bid => { const d = document.querySelector(`.box[data-bid="${bid}"] .b-del`); const r = d.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, bi.bid);
+  const topAtX = await page.evaluate(c => document.elementFromPoint(c.x, c.y)?.className || '', xc);
+  ok('✕ button is on top (not covered by a grip)', /b-del/.test(topAtX), `elementFromPoint=${topAtX}`);
+  const bxN0 = await page.locator('.box').count();
+  await page.mouse.move(xc.x, xc.y); await page.waitForTimeout(30);
+  await page.mouse.down(); await page.mouse.up();                                // real click on ✕
+  await page.waitForTimeout(120);
+  ok('✕ deletes the event', await page.locator('.box').count() === bxN0 - 1, `before=${bxN0} after=${await page.locator('.box').count()}`);
+
+  // ---- 2d. tapping a timeline body must NOT pollute undo ----
+  const note0 = await page.locator('.note').count();
+  await page.keyboard.press('n'); await page.mouse.click(1280, 800); await page.keyboard.press('v');   // real change: +1 note
+  await page.evaluate(() => document.activeElement && document.activeElement.blur());
+  await page.waitForTimeout(50);
+  const noteAdded = await page.locator('.note').count();
+  const tapPt = await page.evaluate(() => { const r = document.querySelector('.timeline .tl-rail').getBoundingClientRect(); return { x: r.left + 8, y: r.top + 8 }; });
+  for (let i = 0; i < 3; i++) { await page.mouse.click(tapPt.x, tapPt.y); await page.waitForTimeout(25); }   // 3 no-move taps
+  await page.keyboard.press('Control+z'); await page.waitForTimeout(100);        // single undo should revert the note
+  ok('timeline taps do not pollute undo', noteAdded === note0 + 1 && (await page.locator('.note').count()) === note0, `note0=${note0} added=${noteAdded} afterUndo=${await page.locator('.note').count()}`);
+
   // ---- 3. link two events ----
   await page.keyboard.press('l');
   const lb = await page.evaluate(() => {
