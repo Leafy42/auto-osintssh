@@ -79,6 +79,7 @@ run_recon call. One result per (tool,target) is enough.`
 // ---------- config ----------
 type config struct {
 	target, objective, model, api, apiKey, bridge, scopeFile, system, out string
+	record                                                               string
 	allowActive, yes                                                      bool
 	maxSteps, maxObs, jobTimeout                                          int
 	temperature                                                          float64
@@ -422,10 +423,12 @@ type agent struct {
 	l      *llm
 	b      *bridge
 	s      *scope
-	cfg    config
-	events []event
-	ran    map[string]bool
-	report string
+	cfg      config
+	events   []event
+	ran      map[string]bool
+	report   string
+	messages []message // full transcript (for -record SFT trajectories)
+	tools    []any     // tool schemas in play
 }
 
 func contains(s []string, v string) bool {
@@ -549,6 +552,7 @@ func (ag *agent) run() error {
 			ag.cfg.target, ag.cfg.objective, mode, activeState, strings.Join(ag.b.tools, ", "))},
 	}
 	tools := toolSchemas(ag.cfg.allowActive)
+	ag.tools = tools
 	for step := 1; step <= ag.cfg.maxSteps; step++ {
 		fmt.Fprintf(os.Stderr, "[step %d/%d]\n", step, ag.cfg.maxSteps)
 		msg, err := ag.l.chat(messages, tools)
@@ -570,6 +574,7 @@ func (ag *agent) run() error {
 			name := call.Function.Name
 			if name == "write_report" {
 				ag.report = strings.TrimSpace(str(a, "markdown", ""))
+				ag.messages = messages
 				return ag.finish()
 			}
 			var result string
@@ -601,7 +606,9 @@ func (ag *agent) run() error {
 				ag.report = str(a, "markdown", "")
 			}
 		}
+		messages = append(messages, msg)
 	}
+	ag.messages = messages
 	return ag.finish()
 }
 
@@ -617,9 +624,43 @@ func (ag *agent) finish() error {
 		report = ag.fallbackReport()
 	}
 	os.WriteFile(reportPath, []byte(report), 0o644)
+	if ag.cfg.record != "" {
+		ag.recordTrajectory()
+	}
 	fmt.Fprintf(os.Stderr, "\n✔ %d findings\n✔ board  → %s  (import with ⤒)\n✔ report → %s\n",
 		len(ag.events), boardPath, reportPath)
 	return nil
+}
+
+// recordTrajectory appends the run as one JSONL line for SFT: conversational
+// format with tool schemas, consumable by LLaMA-Factory / Axolotl / TRL.
+// Tool-role observations are re-truncated so recorded context stays
+// training-sized. Against the runner's SIMULATE mode this yields clean,
+// PII-free, deterministic tool-call trajectories with no live scanning.
+func (ag *agent) recordTrajectory() {
+	clean := make([]message, len(ag.messages))
+	for i, m := range ag.messages {
+		if m.Role == "tool" {
+			m.Content = ag.truncate(m.Content)
+		}
+		clean[i] = m
+	}
+	mode := "simulate"
+	if ag.b.execMode {
+		mode = "exec"
+	}
+	rec := map[string]any{"messages": clean, "tools": ag.tools, "meta": map[string]any{
+		"target": ag.cfg.target, "objective": ag.cfg.objective, "mode": mode,
+		"findings": len(ag.events), "completed": ag.report != ""}}
+	line, _ := json.Marshal(rec)
+	f, err := os.OpenFile(ag.cfg.record, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "record: %v\n", err)
+		return
+	}
+	defer f.Close()
+	f.Write(append(line, '\n'))
+	fmt.Fprintf(os.Stderr, "✔ trajectory → %s (append)\n", ag.cfg.record)
 }
 
 func (ag *agent) fallbackReport() string {
@@ -692,6 +733,7 @@ func main() {
 	flag.IntVar(&cfg.jobTimeout, "job-timeout", 120, "per-job seconds")
 	flag.Float64Var(&cfg.temperature, "temperature", 0.2, "sampling temperature")
 	flag.StringVar(&cfg.out, "out", "loot", "output dir for board.json + report.md")
+	flag.StringVar(&cfg.record, "record", "", "append this run as an SFT trajectory (JSONL) for fine-tuning")
 	flag.StringVar(&cfg.system, "system", "", "system prompt override (else built-in)")
 	flag.Parse()
 

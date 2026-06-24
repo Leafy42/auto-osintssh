@@ -157,6 +157,7 @@ python3 ai/osint_agent.py --target acme-corp.com \
 | `--max-steps` | orchestrator-enforced step budget (default 16) |
 | `--max-obs-chars` | truncate each tool observation (head+tail) before it re-enters context |
 | `--out DIR` | where `board.json` + `report.md` go |
+| `--record FILE` | append the run as an SFT trajectory (JSONL) — see §5.4 |
 
 ---
 
@@ -243,13 +244,38 @@ Multi-turn **tool-call trajectories**, not single-shot pairs. Each example =
 4. **Size:** quality > quantity. ~1k examples/tool is a common target; ~5k–25k
    total gives strong gains. Build a held-out trajectory eval set.
 
-### 5.4 The dataset generator you (almost) already have
+### 5.4 The dataset generator you already have (`--record`)
 
 The simulator in `pipe-server.js` emits realistic, deterministic output for
-every tool. Point the harness at it with a teacher model and **log every
-`messages` transcript** — that *is* your SFT corpus, with zero real scanning and
-zero PII. (A `--record trajectories.jsonl` flag is a ~10-line add to either
-harness: dump the `messages` array on `write_report`.)
+every tool. Point a **teacher model** at the harness in simulate mode and pass
+`--record trajectories.jsonl` — each run is appended as one JSONL line of your
+SFT corpus, with **zero real scanning and zero PII**:
+
+```bash
+node bridge/pipe-server.js --fast          # simulate; deterministic output
+for d in acme-corp.com globex.io 198.51.100.0/24 staff@initech.com; do
+  python3 ai/osint_agent.py --target "$d" --model qwen3:32b \
+      --api http://127.0.0.1:11434/v1 --record data/trajectories.jsonl --yes
+done
+```
+
+Each line is the OpenAI **conversational-with-tools** format that
+LLaMA-Factory / Axolotl / TRL consume directly:
+
+```json
+{"messages":[{"role":"system",...},{"role":"user",...},
+             {"role":"assistant","tool_calls":[{"function":{"name":"run_recon",...}}]},
+             {"role":"tool","name":"run_recon","content":"### whois\n..."}, ...],
+ "tools":[ ...the 4 function schemas... ],
+ "meta":{"target":"acme-corp.com","mode":"simulate","findings":12,"completed":true}}
+```
+
+Tool-role observations are re-truncated (`--max-obs-chars`) so recorded context
+stays training-sized. Filter on `meta.completed` to keep only runs that reached
+`write_report`. Both harnesses write the identical format and **append**, so you
+can fan many runs (and both languages) into one file. Vary targets and the
+runner's `--config` tools to get schema diversity (§5.3). This is the bridge
+from "prompted baseline" to "fine-tuned worker" — the corpus builds itself.
 
 ### 5.5 Pitfalls
 

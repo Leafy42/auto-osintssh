@@ -351,6 +351,8 @@ class Agent:
         self.events = []          # accumulated findings
         self.ran = set()          # (tool, target) already executed
         self.report = None
+        self.messages = []        # full transcript (for --record SFT trajectories)
+        self.tools = []           # tool schemas in play (recorded alongside)
 
     def _truncate(self, text):
         cap = self.args.max_obs_chars
@@ -418,6 +420,7 @@ class Agent:
                 "Begin. Plan briefly, then call run_recon."},
         ]
         tools = tool_schemas(self.args.allow_active)
+        self.messages, self.tools = messages, tools   # keep refs for --record
         handlers = {"run_recon": self._do_run_recon, "add_findings": self._do_add_findings,
                     "request_scope_decision": self._do_scope_decision}
         for step in range(1, self.args.max_steps + 1):
@@ -468,10 +471,32 @@ class Agent:
         report = self.report or self._fallback_report()
         with open(report_path, "w") as f:
             f.write(report)
+        if self.args.record:
+            self._record_trajectory()
         print(f"\n✔ {len(self.events)} findings", file=sys.stderr)
         print(f"✔ board  → {board_path}  (import in page with ⤒)", file=sys.stderr)
         print(f"✔ report → {report_path}", file=sys.stderr)
         return {"events": self.events, "board": board_path, "report": report_path}
+
+    def _record_trajectory(self):
+        """Append the run as one JSONL line for SFT: conversational format with
+        tool schemas, consumable by LLaMA-Factory / Axolotl / TRL. Tool-role
+        observations are re-truncated so recorded context stays training-sized.
+        Against the runner's SIMULATE mode this yields clean, PII-free,
+        deterministic tool-call trajectories with no live scanning."""
+        clean = []
+        for m in self.messages:
+            m = dict(m) if isinstance(m, dict) else m
+            if isinstance(m, dict) and m.get("role") == "tool" and isinstance(m.get("content"), str):
+                m["content"] = self._truncate(m["content"])
+            clean.append(m)
+        rec = {"messages": clean, "tools": self.tools,
+               "meta": {"target": self.args.target, "objective": self.args.objective,
+                        "mode": "exec" if self.bridge.exec_mode else "simulate",
+                        "findings": len(self.events), "completed": self.report is not None}}
+        with open(self.args.record, "a") as f:
+            f.write(json.dumps(rec, default=str) + "\n")
+        print(f"✔ trajectory → {self.args.record} (append)", file=sys.stderr)
 
     def _fallback_report(self):
         lines = [f"# OSINT Brief — {self.args.target}", "",
@@ -500,6 +525,7 @@ def main():
     p.add_argument("--job-timeout", type=int, default=120)
     p.add_argument("--temperature", type=float, default=0.2)
     p.add_argument("--out", default="loot", help="output directory for board.json + report.md")
+    p.add_argument("--record", help="append this run as an SFT trajectory (JSONL) for fine-tuning")
     p.add_argument("--system-file", default=os.path.join(HERE, "SYSTEM_PROMPT.txt"),
                    help="optional system-prompt override file")
     args = p.parse_args()
