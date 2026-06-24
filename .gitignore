@@ -4,3 +4,6 @@ node_modules/
 /tmp/
 holotable*.json
 !samples/*.json
+ai/__pycache__/
+ai/**/loot/
+loot/

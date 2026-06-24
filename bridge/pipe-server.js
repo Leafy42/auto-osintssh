@@ -82,15 +82,62 @@ function buildArgv(toolKey, target, ssh){
 }
 
 /* ============================ simulators ============================ */
-function simSubfinder(t){ return ['www.'+t, 'mail.'+t, 'vpn.'+t, 'api.'+t, 'dev.'+t, 'staging.'+t]; }
-function simDnsx(t){ return [`www.${t} [A] [203.0.113.42]`, `mail.${t} [A] [203.0.113.43]`, `vpn.${t} [A] [203.0.113.44]`, `${t} [MX] [mail.${t}]`]; }
-function simHttpx(t){ return [
-  `{"url":"https://www.${t}","host":"203.0.113.42","status_code":200,"title":"Home","tech":["nginx","React"]}`,
-  `{"url":"https://api.${t}","host":"203.0.113.43","status_code":403,"title":"Forbidden","tech":["nginx"]}`,
-  `{"url":"https://vpn.${t}","host":"203.0.113.44","status_code":200,"title":"VPN Portal","tech":["OpenResty"]}`,
-]; }
-function simNmap(t){
-  return [
+/* Deterministic by default (profile arg absent) so unit tests stay stable.
+   With --vary the runner passes a per-target PROFILE so every tool's output is
+   varied but mutually CONSISTENT for a target — subfinder's subdomains resolve
+   to dnsx's IPs, httpx/nmap hit the same hosts, whois/amass agree. That yields
+   coherent, diverse trajectories for fine-tuning instead of fixed fixtures. */
+function mulberry32(a){ return function(){ a|=0; a=a+0x6D2B79F5|0; let t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+function strHash(s){ let h=2166136261>>>0; for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=Math.imul(h,16777619); } return h>>>0; }
+
+const SUB_POOL=['www','mail','vpn','api','dev','staging','portal','app','cdn','git','jira','admin','test','beta','shop','blog','remote','sso','gateway','db','ns1','ns2','smtp','owa','citrix','intranet'];
+const REGISTRARS=['MarkMonitor Inc.','GoDaddy.com, LLC','Namecheap, Inc.','CSC Corporate Domains, Inc.','Gandi SAS','Cloudflare, Inc.','Network Solutions, LLC'];
+const ORG_SUFFIX=['Holdings LLC','Inc.','Group plc','Technologies','Corp','Industries','Labs','Systems'];
+const TECH=['nginx','Apache','React','Vue','OpenResty','IIS','Cloudflare','Express','Next.js','WordPress','Tomcat','Node.js'];
+const TITLES=['Home','Login','Dashboard','API','Forbidden','VPN Portal','Welcome','Sign in','Admin Console','Not Found'];
+const SERVICES=[[22,'ssh',['OpenSSH 8.2p1 Ubuntu 4ubuntu0.5','OpenSSH 7.4','OpenSSH 9.3p1']],[80,'http',['nginx 1.18.0','Apache httpd 2.4.41','nginx 1.25.3']],[443,'ssl/https',['nginx 1.18.0','Apache httpd 2.4.41']],[25,'smtp',['Postfix smtpd']],[3306,'mysql',['MySQL 5.7.38']],[8080,'http-proxy',['Squid 4.10']],[21,'ftp',['vsftpd 3.0.3']],[3389,'ms-wbt-server',['Microsoft Terminal Services']],[6379,'redis',['Redis 6.2.6']],[8443,'ssl/https',['nginx 1.21.0']]];
+
+let VARY=null;                 // {seed} when --vary is on
+const _profiles=new Map();     // target -> coherent profile (cached per session)
+function profileFor(target){
+  if(_profiles.has(target)) return _profiles.get(target);
+  const rng=mulberry32(((VARY?VARY.seed:0)>>>0) ^ strHash(target));
+  const pick=a=>a[Math.floor(rng()*a.length)];
+  const ipgen=()=>`${pick([192,198,203,45,104,159,185,13])}.${Math.floor(rng()*256)}.${Math.floor(rng()*256)}.${1+Math.floor(rng()*253)}`;
+  const pool=SUB_POOL.slice(), subs=[], nsub=4+Math.floor(rng()*5);
+  for(let i=0;i<nsub && pool.length;i++) subs.push(pool.splice(Math.floor(rng()*pool.length),1)[0]);
+  if(!subs.includes('www')) subs.unshift('www');
+  const ips={}; subs.forEach(s=>ips[s]=ipgen());
+  const sp=SERVICES.slice(), ports=[], nports=2+Math.floor(rng()*4);
+  for(let i=0;i<nports && sp.length;i++){ const s=sp.splice(Math.floor(rng()*sp.length),1)[0]; ports.push({port:s[0],svc:s[1],ver:pick(s[2])}); }
+  ports.sort((a,b)=>a.port-b.port);
+  const base=target.split('.')[0];
+  const prof={ subs, ips, apex:ips['www'], ports, rng, pick,
+    org:`${base.charAt(0).toUpperCase()+base.slice(1)} ${pick(ORG_SUFFIX)}`,
+    registrar:pick(REGISTRARS), year:2004+Math.floor(rng()*20),
+    emails:[`admin@${target}`, `${pick(['info','security','it','hr','sales','noc'])}@${target}`, `${pick(['j.doe','a.smith','m.lee','k.patel'])}@${target}`],
+    titles:TITLES };
+  _profiles.set(target,prof); return prof;
+}
+
+function simSubfinder(t,p){ return p? p.subs.map(s=>s+'.'+t) : ['www.'+t,'mail.'+t,'vpn.'+t,'api.'+t,'dev.'+t,'staging.'+t]; }
+function simDnsx(t,p){
+  if(!p) return [`www.${t} [A] [203.0.113.42]`,`mail.${t} [A] [203.0.113.43]`,`vpn.${t} [A] [203.0.113.44]`,`${t} [MX] [mail.${t}]`];
+  return p.subs.map(s=>`${s}.${t} [A] [${p.ips[s]}]`).concat([`${t} [MX] [mail.${t}]`]);
+}
+function simHttpx(t,p){
+  if(!p) return [
+    `{"url":"https://www.${t}","host":"203.0.113.42","status_code":200,"title":"Home","tech":["nginx","React"]}`,
+    `{"url":"https://api.${t}","host":"203.0.113.43","status_code":403,"title":"Forbidden","tech":["nginx"]}`,
+    `{"url":"https://vpn.${t}","host":"203.0.113.44","status_code":200,"title":"VPN Portal","tech":["OpenResty"]}`,
+  ];
+  const web=p.subs.filter(s=>!['ns1','ns2','smtp','db'].includes(s));
+  const use=(web.length?web:['www']).slice(0,3+Math.floor(p.rng()*2));
+  return use.map(s=>JSON.stringify({url:`https://${s}.${t}`,host:p.ips[s]||p.apex,
+    status_code:p.pick([200,200,200,301,403,401,500]),title:p.pick(p.titles),tech:[p.pick(TECH),p.pick(TECH)]}));
+}
+function simNmap(t,p){
+  if(!p) return [
     `Starting Nmap 7.94 ( https://nmap.org )`,
     `Nmap scan report for ${t} (203.0.113.42)`,
     `Host is up (0.018s latency).`,
@@ -101,55 +148,85 @@ function simNmap(t){
     `8080/tcp open  http-proxy Squid 4.10`,
     `Nmap done: 1 IP address (1 host up) scanned`,
   ];
+  const out=[`Starting Nmap 7.94 ( https://nmap.org )`,`Nmap scan report for ${t} (${p.apex})`,
+    `Host is up (0.0${1+Math.floor(p.rng()*9)}s latency).`,`PORT     STATE SERVICE   VERSION`];
+  p.ports.forEach(pt=>out.push(`${pt.port}/tcp open  ${pt.svc}  ${pt.ver}`));
+  out.push(`Nmap done: 1 IP address (1 host up) scanned`);
+  return out;
 }
-function simHarvester(t){
-  return [
-    `[*] Target: ${t}`,
-    `[*] Emails found:`,
-    `-------------------`,
+function simHarvester(t,p){
+  if(!p) return [
+    `[*] Target: ${t}`,`[*] Emails found:`,`-------------------`,
     `admin@${t}`, `j.doe@${t}`, `security@${t}`,
-    `[*] Hosts found:`,
-    `-------------------`,
-    `www.${t}`, `mail.${t}`, `vpn.${t}`,
+    `[*] Hosts found:`,`-------------------`,`www.${t}`, `mail.${t}`, `vpn.${t}`,
   ];
+  return [`[*] Target: ${t}`,`[*] Emails found:`,`-------------------`,...p.emails,
+    `[*] Hosts found:`,`-------------------`,...p.subs.map(s=>s+'.'+t)];
 }
-function simAmass(t){
-  return [
+function simAmass(t,p){
+  if(!p) return [
     `www.${t}`,
     `mail.${t} (FQDN) --> a_record --> 203.0.113.43 (IPAddress)`,
     `vpn.${t} (FQDN) --> a_record --> 203.0.113.44 (IPAddress)`,
     `api.${t}`,
     `dev.${t} (FQDN) --> cname_record --> ${t.split('.').slice(-2).join('.')}.netlify.app (FQDN)`,
   ];
+  return p.subs.map(s=> p.rng()<0.45 ? `${s}.${t}` : `${s}.${t} (FQDN) --> a_record --> ${p.ips[s]} (IPAddress)`);
 }
-function simWhois(t){
-  const yr = 2009 + (t.length % 9);
+function simWhois(t,p){
+  if(!p){
+    const yr = 2009 + (t.length % 9);
+    return [
+      `Domain Name: ${t.toUpperCase()}`,
+      `Registrar: Example Registrar, Inc.`,
+      `Creation Date: ${yr}-05-14T18:09:11Z`,
+      `Updated Date: 2023-11-02T07:21:46Z`,
+      `Registry Expiry Date: 2026-05-14T18:09:11Z`,
+      `Registrant Organization: ${t.split('.')[0]} Holdings LLC`,
+      `Name Server: NS1.${t.toUpperCase()}`,
+      `Name Server: NS2.${t.toUpperCase()}`,
+      `DNSSEC: unsigned`,
+    ];
+  }
+  const mo=1+Math.floor(p.rng()*8), day=10+Math.floor(p.rng()*9);
   return [
     `Domain Name: ${t.toUpperCase()}`,
-    `Registrar: Example Registrar, Inc.`,
-    `Creation Date: ${yr}-05-14T18:09:11Z`,
-    `Updated Date: 2023-11-02T07:21:46Z`,
-    `Registry Expiry Date: 2026-05-14T18:09:11Z`,
-    `Registrant Organization: ${t.split('.')[0]} Holdings LLC`,
+    `Registrar: ${p.registrar}`,
+    `Creation Date: ${p.year}-0${mo}-${day}T09:11:00Z`,
+    `Updated Date: 2024-11-02T07:21:46Z`,
+    `Registry Expiry Date: ${p.year+10}-0${mo}-${day}T09:11:00Z`,
+    `Registrant Organization: ${p.org}`,
     `Name Server: NS1.${t.toUpperCase()}`,
     `Name Server: NS2.${t.toUpperCase()}`,
-    `DNSSEC: unsigned`,
+    `DNSSEC: ${p.rng()<0.5?'unsigned':'signedDelegation'}`,
   ];
 }
-function simDnsrecon(t){
-  return [
+function simDnsrecon(t,p){
+  if(!p) return [
     `[*] std: Performing General Enumeration of Domain: ${t}`,
     `[*]      A ${t} 203.0.113.42`,
     `[*]      MX ${t} mail.${t} 10`,
     `[*]      NS ns1.${t} 203.0.113.2`,
     `[*]      TXT ${t} v=spf1 include:_spf.${t} ~all`,
   ];
-}
-function simHost(t){
   return [
+    `[*] std: Performing General Enumeration of Domain: ${t}`,
+    `[*]      A ${t} ${p.apex}`,
+    `[*]      MX ${t} mail.${t} 10`,
+    `[*]      NS ns1.${t} ${p.ips['ns1']||p.apex}`,
+    `[*]      TXT ${t} v=spf1 include:_spf.${t} ~all`,
+  ];
+}
+function simHost(t,p){
+  if(!p) return [
     `${t} has address 203.0.113.42`,
     `${t} mail is handled by 10 mail.${t}`,
     `${t} has IPv6 address 2001:db8::42`,
+  ];
+  return [
+    `${t} has address ${p.apex}`,
+    `${t} mail is handled by 10 mail.${t}`,
+    `${t} has IPv6 address 2001:db8::${Math.floor(p.rng()*65535).toString(16)}`,
   ];
 }
 
@@ -192,6 +269,7 @@ function startServer(opts){
   const timeoutSec = opts.timeoutSec || 0;
   const concurrency = Math.max(1, opts.concurrency || 1);
   const outDir = opts.outDir || null;
+  if (opts.vary){ VARY = { seed: opts.varySeed || 1 }; _profiles.clear(); }   // seeded, coherent per-target variation
 
   // merge any custom tools from --config; load scope allowlist from --scope
   const REG = Object.assign({}, REGISTRY);
@@ -269,7 +347,7 @@ function startServer(opts){
     const tool = REG[toolKey];
     return new Promise(resolve => {
       if (mode === 'simulate'){
-        const lines = tool.sim(target); let i = 0;
+        const lines = tool.sim(target, VARY ? profileFor(target) : undefined); let i = 0;
         const tick = () => {
           if (i < lines.length){ log(tool.tag, lines[i++]); setTimeout(tick, fast ? 0 : 90); }
           else { const text=lines.join('\n'); saveOut(toolKey, target, text); broadcast({ type:'result', tool: tool.tag, text }); resolve(); }
@@ -320,7 +398,7 @@ function startServer(opts){
   server.listen(port, host, () => {
     console.log(`\n  OSINT Holotable runner`);
     console.log(`  listening  ws://${host}:${port}`);
-    console.log(`  mode       ${mode}${ssh ? ' via ssh '+ssh : ''}${concurrency>1?' · x'+concurrency:''}${timeoutSec?' · timeout '+timeoutSec+'s':''}${scope.length?' · scoped':''}${outDir?' · out '+outDir:''}`);
+    console.log(`  mode       ${mode}${ssh ? ' via ssh '+ssh : ''}${VARY?' · vary seed '+VARY.seed:''}${concurrency>1?' · x'+concurrency:''}${timeoutSec?' · timeout '+timeoutSec+'s':''}${scope.length?' · scoped':''}${outDir?' · out '+outDir:''}`);
     console.log(`  tools      ${Object.keys(REG).join(', ')}`);
     console.log(`  in page    dock ▸ RECON ▸ target + tools ▸ Launch\n`);
     if (streamCmd) runStreamCmd();
@@ -333,6 +411,7 @@ function startServer(opts){
 function parseArgs(argv){
   let port = 7842, host = '127.0.0.1', mode = 'simulate', ssh = null, fast = false, streamCmd = null, streamTag = 'lines';
   let scopeFile = null, configFile = null, outDir = null, timeoutSec = 0, concurrency = 1;
+  let vary = false, varySeed = 1;
   for (let i = 0; i < argv.length; i++){
     const a = argv[i];
     if (a === '--port') port = parseInt(argv[++i], 10);
@@ -340,6 +419,7 @@ function parseArgs(argv){
     else if (a === '--exec') mode = 'exec';
     else if (a === '--ssh'){ mode = 'exec'; ssh = argv[++i]; }
     else if (a === '--demo') mode = 'demo';
+    else if (a === '--vary'){ vary = true; const n = argv[i+1]; if (n && /^\d+$/.test(n)){ varySeed = parseInt(n,10); i++; } }
     else if (a === '--fast') fast = true;
     else if (a === '--scope') scopeFile = argv[++i];
     else if (a === '--config') configFile = argv[++i];
@@ -354,6 +434,7 @@ function parseArgs(argv){
         '  --exec | --ssh user@host | --demo   real local / over-ssh / passive demo (default: simulate)\n' +
         '  --scope FILE       only allow targets in this allowlist (domains / *.domain / CIDR)\n' +
         '  --config FILE      add custom tools (JSON: {"name":{"bin":"x","args":["-d","{target}"],"tag":"lines"}})\n' +
+        '  --vary [SEED]      simulate mode: varied, per-target-coherent output (for fine-tuning data)\n' +
         '  --out DIR          save each tool\'s raw output to DIR\n' +
         '  --timeout SEC      kill any tool after SEC seconds\n' +
         '  --concurrency N    run up to N tools at once (default 1)\n' +
@@ -362,7 +443,7 @@ function parseArgs(argv){
       process.exit(0);
     }
   }
-  return { port, host, mode, ssh, fast, streamCmd, streamTag, scopeFile, configFile, outDir, timeoutSec, concurrency };
+  return { port, host, mode, ssh, fast, streamCmd, streamTag, scopeFile, configFile, outDir, timeoutSec, concurrency, vary, varySeed };
 }
 
 if (require.main === module){
@@ -374,4 +455,4 @@ if (require.main === module){
 module.exports = { REGISTRY, validTarget, buildArgv, decodeFrames, encodeFrame,
   ipToInt, ipInCidr, inScope, parseScope,
   simNmap, simHarvester, simAmass, simWhois, simDnsrecon, simHost, simSubfinder, simHttpx, simDnsx,
-  startServer, parseArgs };
+  startServer, parseArgs, profileFor, mulberry32, strHash };
