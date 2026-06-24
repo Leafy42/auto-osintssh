@@ -91,6 +91,30 @@ ok('default mode simulate', R.parseArgs([]).mode === 'simulate');
 ok('--exec → exec', R.parseArgs(['--exec']).mode === 'exec');
 ok('--ssh sets host+exec', (a => a.mode === 'exec' && a.ssh === 'u@h')(R.parseArgs(['--ssh', 'u@h'])));
 ok('--port parsed', R.parseArgs(['--port', '9000']).port === 9000);
+ok('--vary sets flag, default seed', (a => a.vary === true && a.varySeed === 1)(R.parseArgs(['--vary'])));
+ok('--vary SEED parsed', (a => a.vary === true && a.varySeed === 42)(R.parseArgs(['--vary', '42'])));
+ok('--vary then flag (no seed)', (a => a.vary === true && a.varySeed === 1 && a.fast === true)(R.parseArgs(['--vary', '--fast'])));
+
+/* ---- --vary: varied output still parses, is coherent, and differs ---- */
+const profA = R.profileFor('alpha-corp.com');
+const profB = R.profileFor('beta-inc.io');
+for (const [name, sim, tag] of simChecks) {
+  const events = A.TOOLS[tag].parse(sim('alpha-corp.com', profA).join('\n'));
+  ok(`${name} varied still parses`, events.length > 0, `0 events for varied ${name}`);
+}
+// coherence: every dnsx IP belongs to a subfinder-discovered subdomain's mapping
+const subs = R.simSubfinder('alpha-corp.com', profA).map(s => s.split('.')[0]);
+ok('varied profile cached (stable)', R.profileFor('alpha-corp.com') === profA);
+ok('varied subfinder ⊇ profile subs', profA.subs.every(s => subs.includes(s)));
+const dnsxIps = R.simDnsx('alpha-corp.com', profA).filter(l => l.includes('[A]'))
+  .map(l => (l.match(/\[(\d+\.\d+\.\d+\.\d+)\]/) || [])[1]);
+ok('varied dnsx IPs come from profile', dnsxIps.every(ip => Object.values(profA.ips).includes(ip)));
+// different targets → different data (not the fixed fixture)
+ok('varied differs across targets', JSON.stringify(profA.ips) !== JSON.stringify(profB.ips));
+ok('varied differs from default fixture',
+  R.simWhois('alpha-corp.com', profA).join('\n') !== R.simWhois('alpha-corp.com').join('\n'));
+// determinism: same seed+target reproduces (fresh module would give same; here cache proves stability)
+ok('mulberry32 deterministic', (() => { const a = R.mulberry32(7), b = R.mulberry32(7); return a() === b(); })());
 
 console.log(`\nrunner: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

@@ -12,6 +12,7 @@ This folder ships three deliverables (all requested, all here):
 | [`PROMPTS.md`](PROMPTS.md) | Model-agnostic **prompt pack** — system prompt, tool-selection rubric, function schemas, report template, few-shot/fine-tuning seeds. |
 | [`osint_agent.py`](osint_agent.py) | **Python** reference harness — zero-dependency (stdlib WebSocket client + urllib). |
 | [`go/osint-agent.go`](go/osint-agent.go) | **Go** reference harness — single static binary, stdlib only. Built for the air-gapped box. |
+| [`prep_dataset.py`](prep_dataset.py) | **Dataset prep** — filter/dedup/augment/split recorded trajectories into train/val JSONL. |
 
 Both harnesses were smoke-tested end-to-end against the real runner in simulate
 mode (handshake → tool loop → entity extraction → `board.json` + `report.md`).
@@ -271,11 +272,33 @@ LLaMA-Factory / Axolotl / TRL consume directly:
 ```
 
 Tool-role observations are re-truncated (`--max-obs-chars`) so recorded context
-stays training-sized. Filter on `meta.completed` to keep only runs that reached
-`write_report`. Both harnesses write the identical format and **append**, so you
-can fan many runs (and both languages) into one file. Vary targets and the
-runner's `--config` tools to get schema diversity (§5.3). This is the bridge
-from "prompted baseline" to "fine-tuned worker" — the corpus builds itself.
+stays training-sized. Both harnesses write the identical format and **append**,
+so you can fan many runs (and both languages) into one file.
+
+**Variance — two levers (use both):**
+
+1. **At the source — `pipe-server.js --vary [SEED]`.** Simulate mode normally
+   emits fixed fixtures (`203.0.113.42`, `www./mail./vpn.`), which would make the
+   model overfit. `--vary` gives each target a **coherent random profile** —
+   subfinder's subdomains resolve to dnsx's IPs, httpx/nmap hit the same hosts,
+   whois/amass agree — so trajectories stay logically consistent but differ run
+   to run. The model reasons over genuinely different data each time.
+   ```bash
+   node bridge/pipe-server.js --fast --vary 7
+   ```
+2. **In post — `prep_dataset.py`.** Cleans and multiplies the recorded corpus:
+   ```bash
+   python3 ai/prep_dataset.py loot/trajectories.jsonl --out-dir data \
+       --augment 3 --val-frac 0.1 --seed 7
+   ```
+   It (a) keeps only `meta.completed` runs (`--keep-incomplete` to override),
+   (b) dedups identical conversations, (c) optionally emits `--augment N` extra
+   variants per run with the target domain and every IPv4 **consistently**
+   substituted (subdomains/emails/tool-args move together), and (d) writes a
+   deterministic `train.jsonl` / `val.jsonl` split.
+
+This is the bridge from "prompted baseline" to "fine-tuned worker" — with
+`--vary` + `--augment`, the corpus builds (and diversifies) itself.
 
 ### 5.5 Pitfalls
 
