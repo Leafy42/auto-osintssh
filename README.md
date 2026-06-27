@@ -67,6 +67,7 @@ paste and go — the preview tells you what it detected.
 | Tool | Accepts |
 |------|---------|
 | **SpiderFoot** | CSV export (`Updated, Type, Module, Source, Data` — tolerant of column order/names) |
+| **BBOT** | NDJSON (`output.ndjson`), CSV export, or the bracketed console output — every event keeps its **scope distance** (hops from the seed), and `FINDING` / `VULNERABILITY` dicts flatten to a readable line with the severity as the event type |
 | **Nmap / Masscan** | normal, greppable (`-oG`), XML / list / JSON — open ports → events, hostnames + IPs split out |
 | **Subfinder / Amass / assetfinder / sublist3r** | subdomain lists or JSON; Amass `name --> record --> ip` relations |
 | **httpx** | JSONL or text (`url [status] [title] [tech]`) — URL + host + status/tech |
@@ -88,12 +89,38 @@ visibility; **search** (top bar) dims everything that doesn't match.
 
 ### Export — for other tools & reports
 
-**Export ⤓** offers four formats, so the board feeds back into your pipeline:
+**Export ⤓** offers five formats, so the board feeds back into your pipeline:
 
 - **Board (.json)** — the full editable board (re-import with **⤒**).
 - **Events (.csv)** — one row per event (`timeline, timestamp, type, module, data, source`) for grep / spreadsheets / SIEM.
-- **Maltego (.csv)** — entity-typed rows (`maltego.IPv4Address`, `maltego.Domain`, …) ready for Maltego's CSV import.
-- **Report (.md)** — a Markdown brief grouped by timeline, with a source summary and the links you drew.
+- **Maltego (.csv)** — entity-typed rows (`maltego.IPv4Address`, `maltego.Domain`, `maltego.BitcoinAddress`, `maltego.Netblock`, …) ready for Maltego's CSV import. When an event's own type isn't a known entity, the value is **re-classified** so a generic row still lands as the right Maltego entity.
+- **Report (.md)** — a Markdown brief grouped by timeline, with a source summary, the links you drew, and the chain-of-custody log.
+- **Chain of custody (.json)** — the append-only provenance log (see below).
+
+### Chain of custody — provenance you can defend
+
+Commercial investigation suites (Hunchly, Paliscope, Nuix) charge for one thing the
+free tooling usually skips: a **tamper-evident record of where every piece of evidence
+came from**. The Holotable builds that in, and keeps it offline.
+
+Every time you ingest an artifact — a pasted export, a dropped file, or a tool's
+output streamed from the recon runner — the table appends a **provenance record**:
+
+- **when** it was ingested, **which tool**, and **how many events** it produced;
+- the **byte size** and a **SHA-256 fingerprint** of the exact bytes.
+
+The fingerprint is computed by a self-contained SHA-256 (no Web Crypto, no
+secure-context requirement) so it works from `file://` on an air-gapped box — and it
+matches `sha256sum`, so anyone can independently reproduce it:
+
+```bash
+sha256sum bbot-output.ndjson      # == the hash shown in the dock & exports
+```
+
+The log is **append-only**: it survives undo/redo, rides along in saved/exported
+boards, prints as a *Chain of custody* table in the **Report (.md)**, and exports on
+its own as **Chain of custody (.json)**. Watch it fill in the dock under
+**CHAIN OF CUSTODY**.
 
 ---
 
@@ -116,7 +143,7 @@ Then in the page: **dock ▸ RECON ▸ type a target ▸ tick tools ▸ Launch**
 in the console. (Or **dock ▸ LIVE PIPE ▸ connect** to just watch a stream.)
 
 Built-in tools: `subfinder`, `amass`, `dnsx`, `httpx`, `nmap`, `theharvester`, `whois`,
-`dnsrecon`, `host` — each mapped to its matching parser. `node bridge/pipe-server.js --list-tools`
+`dnsrecon`, `host`, `bbot` — each mapped to its matching parser. `node bridge/pipe-server.js --list-tools`
 prints the registry.
 
 ### Flags

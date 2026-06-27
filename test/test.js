@@ -163,7 +163,42 @@ eq('classify cve', A.classify('CVE-2021-1234'), 'cve');
   ok('secrets parsed', A.parseSecrets(secrets).some(e=>e.type==='secret'&&/aws-key/.test(e.module)));
 }
 
+/* ---- BBOT (NDJSON / CSV / console) ---- */
+{
+  const ndjson=[
+    '{"type":"DNS_NAME","data":"www.x.com","module":"crt","scope_distance":1,"timestamp":1717977601}',
+    '{"type":"OPEN_TCP_PORT","data":"203.0.113.42:443","module":"portscan","scope_distance":1,"timestamp":1717977604}',
+    '{"type":"EMAIL_ADDRESS","data":"a@x.com","module":"emailformat","scope_distance":1,"timestamp":1717977607}',
+    '{"type":"FINDING","data":{"description":"Open S3 bucket","host":"203.0.113.42"},"module":"bucket_amazon","scope_distance":1,"timestamp":1717977608}',
+    '{"type":"VULNERABILITY","data":{"severity":"HIGH","description":"CVE-2023-1 exposed","host":"203.0.113.42"},"module":"nuclei","scope_distance":2,"timestamp":1717977609}',
+  ].join('\n');
+  const eb=A.parseBbot(ndjson);
+  ok('bbot DNS_NAME→domain', eb.some(e=>e.type==='domain'&&e.data==='www.x.com'));
+  ok('bbot OPEN_TCP_PORT→port', eb.some(e=>e.type==='port'&&/203\.0\.113\.42:443/.test(e.data)));
+  ok('bbot email', eb.some(e=>e.type==='email'&&e.data==='a@x.com'));
+  ok('bbot FINDING flattens dict data', eb.some(e=>e.type==='finding'&&/Open S3 bucket/.test(e.data)));
+  ok('bbot VULNERABILITY severity as type', eb.some(e=>e.type==='high'&&/CVE-2023-1/.test(e.data)));
+  ok('bbot surfaces scope distance in module', eb.some(e=>/\bd1\b/.test(e.module)) && eb.some(e=>/\bd2\b/.test(e.module)));
+  ok('bbot timestamp parsed', eb.every(e=>e.t>0));
+  ok('bbot tags source', eb.every(e=>e.source==='bbot'));
+  // CSV export form
+  const csv='Event type,Event data,IP Address,Source Module,Scope Distance,Event Tags\n'+
+            'DNS_NAME,api.x.com,203.0.113.7,crt,1,"subdomain,in-scope"\n'+
+            'OPEN_TCP_PORT,203.0.113.7:22,203.0.113.7,portscan,1,open-port\n';
+  const ec=A.parseBbot(csv);
+  ok('bbot csv domain', ec.some(e=>e.type==='domain'&&e.data==='api.x.com'));
+  ok('bbot csv port', ec.some(e=>e.type==='port'&&/203\.0\.113\.7:22/.test(e.data)));
+  // bracketed console form (tab-separated)
+  const con='[DNS_NAME]\tdev.x.com\tcrt\n[URL]\thttps://dev.x.com/\thttpx';
+  const eo=A.parseBbot(con);
+  ok('bbot console domain', eo.some(e=>e.type==='domain'&&e.data==='dev.x.com'));
+  ok('bbot console url', eo.some(e=>e.type==='url'&&/dev\.x\.com/.test(e.data)));
+}
+
 /* ---- auto-detection ---- */
+ok('detect bbot ndjson', A.detectTool('{"type":"DNS_NAME","data":"x.com","module":"crt","scope_distance":1}')==='bbot');
+ok('detect bbot csv', A.detectTool('Event type,Event data,IP Address,Source Module,Scope Distance,Event Tags\nDNS_NAME,x.com,1.2.3.4,crt,1,sub')==='bbot');
+ok('detect bbot filename', A.detectTool('whatever','target-bbot.ndjson')==='bbot');
 ok('detect nmap', A.detectTool('Nmap scan report for x.com (1.2.3.4)\n22/tcp open ssh')==='nmap');
 ok('detect masscan', A.detectTool('open tcp 80 1.2.3.4 1620000000')==='masscan');
 ok('detect httpx', A.detectTool('{"url":"https://x.com","status_code":200,"host":"1.2.3.4"}')==='httpx');
@@ -180,6 +215,13 @@ ok('detect via TOOLS.auto resolves+parses', A.TOOLS.auto.parse('22/tcp open ssh\
 /* ---- source color stable ---- */
 ok('known tool color', A.sourceColor('nmap')==='#27e8a7');
 ok('unknown source deterministic', A.sourceColor('weirdtool')===A.sourceColor('weirdtool'));
+
+/* ---- sha256 (chain-of-custody fingerprint) — NIST known-answer vectors ---- */
+eq('sha256 empty string', A.sha256(''), 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855');
+eq('sha256 "abc"', A.sha256('abc'), 'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+eq('sha256 fox', A.sha256('The quick brown fox jumps over the lazy dog'), 'd7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592');
+ok('sha256 deterministic', A.sha256('holotable')===A.sha256('holotable'));
+ok('sha256 multibyte utf-8', /^[0-9a-f]{64}$/.test(A.sha256('☃ snowman — café')));
 
 console.log(`\n${pass} passed, ${fail} failed`);
 process.exit(fail?1:0);
