@@ -1,0 +1,637 @@
+{
+  "metadata": {
+    "database_name": "North American Mining Companies - Electric Fleet Transition Leads",
+    "purpose": "Energy broker lead database - mining companies with major electrification charging demands",
+    "created_date": "2026-06-28",
+    "total_companies": 18,
+    "industry_context": {
+      "market_insight": "McKinsey estimates mine electrification could double site-level electricity demand. A single open-pit mine replacing 27 diesel haul trucks with electric equivalents more than doubles its electricity consumption.",
+      "global_scale": "Electrifying the global iron ore mobile fleet alone would require an additional 20-30 TWh of electricity and $30-45 billion in power infrastructure investment.",
+      "per_truck_charging": "Large electric haul trucks require 1-2 MWh batteries (up to 3.2 MWh for Liebherr T 264). Megawatt Charging Systems (MCS) deliver up to 3.75 MW per charger (3,000A at 1,250V DC); single fast charger can reach 6 MW. A 30-truck open-pit mine fleet would require 60-180 MW of dedicated charging infrastructure.",
+      "per_site_demand": "Full fleet electrification at a major open-pit mine requires several to tens of additional megawatts of grid capacity, effectively doubling the mine's total electricity demand. Electric shovel peak draw: ~3.5 MW; dragline peak draw: ~24 MW.",
+      "cost_benefit": "Electrification reduces energy costs by 40-70%, maintenance costs by ~30%, operating costs by ~31%, and carbon footprint by 60-80% with renewable power sources. Single 150-ton haul truck saves >$850,000/year in diesel fuel; >$5.5M savings over vehicle lifetime.",
+      "industry_adoption": "44% of NA mining companies planning haulage decarbonisation investment by 2026; 71% planning to electrify 25% of fleets by 2030. Over 600 BEV units deployed globally in mining. BEV repeat order rate exceeds 40%. 8 of world's top 10 miners by market cap aiming for fully electrified fleets."
+    }
+  },
+  "companies": [
+    {
+      "id": 1,
+      "company_name": "Freeport-McMoRan Inc.",
+      "ticker": "FCX (NYSE)",
+      "na_hq_address": "333 N. Central Avenue, Phoenix, AZ 85004",
+      "phone": "+1 602-366-8100",
+      "email": "ir@fmi.com",
+      "website": "https://www.fcx.com",
+      "annual_revenue": "$25.9 billion (2025)",
+      "primary_commodities": "Copper, Gold, Molybdenum",
+      "electric_fleet_commitments": [
+        "Early learner for Caterpillar's first battery-electric 793 prototype truck at Sierrita mine (2024 trial)",
+        "Converting 33 Cat 793 haul trucks at Bagdad mine (AZ) to autonomous haulage over 3 years - positioning for future electrification",
+        "$3 billion Morenci mine overhaul deploying AI-powered drilling, autonomous haul trucks, and real-time ore analysis - 40% output increase by late 2026",
+        "Working with Caterpillar on new electrification technologies across operations"
+      ],
+      "key_mine_locations": [
+        {"name": "Morenci Mine", "state": "Arizona", "type": "Open-pit copper"},
+        {"name": "Bagdad Mine", "state": "Arizona", "type": "Open-pit copper"},
+        {"name": "Sierrita Mine", "state": "Arizona", "type": "Open-pit copper"},
+        {"name": "Safford/Lone Star Mine", "state": "Arizona", "type": "Open-pit copper"},
+        {"name": "Chino Mine", "state": "New Mexico", "type": "Open-pit copper"},
+        {"name": "Tyrone Mine", "state": "New Mexico", "type": "Open-pit copper"},
+        {"name": "Climax Mine", "state": "Colorado", "type": "Molybdenum"},
+        {"name": "Henderson Mine", "state": "Colorado", "type": "Molybdenum"}
+      ],
+      "projected_energy_demand": "Morenci alone operates one of the world's largest haul truck fleets. Full electrification of 30+ ultra-class haul trucks per mine site would require 50-100+ MW of additional charging infrastructure across AZ/NM/CO operations.",
+      "net_zero_target": "Active sustainability program aligned with Caterpillar electrification roadmap",
+      "lead_priority": "HIGH - Largest US copper producer, multiple large open-pit mines, active EV truck trials",
+      "sources": [
+        "https://im-mining.com/2024/04/26/freeport-to-get-caterpillar-early-learner-battery-electric-truck-at-sierrita-in-2024/",
+        "https://www.prnewswire.com/news-releases/freeport-mcmoran-to-convert-fleet-of-cat-793-trucks-at-its-bagdad-mine-in-arizona-to-autonomous-haulage-using-cat-minestar-command-for-hauling-301972583.html",
+        "https://thesiliconreview.com/2025/03/copper-mine-ev-automation-expansion",
+        "https://www.fcx.com/contact"
+      ]
+    },
+    {
+      "id": 2,
+      "company_name": "Newmont Corporation",
+      "ticker": "NEM (NYSE)",
+      "na_hq_address": "6900 E. Layton Avenue, Suite 700, Denver, CO 80237",
+      "phone": "+1 303-863-7414",
+      "email": "investor.relations@newmont.com",
+      "website": "https://www.newmont.com",
+      "annual_revenue": "$22.7 billion (2025)",
+      "primary_commodities": "Gold, Silver, Copper, Zinc",
+      "electric_fleet_commitments": [
+        "$100 million preliminary investment with Caterpillar for 26 first-of-a-kind battery-electric autonomous vehicles by 2027",
+        "Cat 793 XE battery-electric 250-ton haul truck deployed at Cripple Creek & Victor mine (CO) in October 2024",
+        "Borden Mine (Ontario): WORLD'S FIRST all-electric underground gold mine - operating since 2019 with Sandvik and MacLean BEVs, eliminating ~5,000 tonnes CO2/year, requiring 50% less ventilation",
+        "Battery autonomous technology introduction in 2025 with full deployment in 2026",
+        "$500 million committed to climate initiatives",
+        "32% Scope 1&2 emissions reduction target by 2030 (from 2018 baseline)",
+        "Surface and underground fleets responsible for ~40% of company's carbon emissions - top priority for reduction"
+      ],
+      "key_mine_locations": [
+        {"name": "Cripple Creek & Victor Mine", "state": "Colorado", "type": "Open-pit gold"},
+        {"name": "Carlin Operations", "state": "Nevada", "type": "Open-pit/underground gold (via Nevada Gold Mines JV)"},
+        {"name": "Turquoise Ridge", "state": "Nevada", "type": "Underground gold (via Nevada Gold Mines JV)"},
+        {"name": "Musselwhite Mine", "state": "Ontario", "type": "Underground gold"},
+        {"name": "Porcupine Mine", "state": "Ontario", "type": "Open-pit/underground gold"},
+        {"name": "Eleonore Mine", "state": "Quebec", "type": "Underground gold"},
+        {"name": "Penasquito Mine", "state": "Zacatecas, Mexico", "type": "Open-pit polymetallic"}
+      ],
+      "projected_energy_demand": "With fleets accounting for 40% of emissions and a 2035 net-zero target, Newmont will need to electrify hundreds of haul trucks and loaders across 7+ NA mine sites. Estimated 20-50 MW additional per large open-pit site.",
+      "net_zero_target": "Net-zero by 2035 (Scope 1 & 2)",
+      "lead_priority": "HIGH - World's largest gold miner, aggressive 2035 net-zero, $100M Caterpillar electrification deal",
+      "sources": [
+        "https://highways.today/2021/11/29/newmont-cat-net-zero-mining/",
+        "https://www.newmont.com/investors/news-release/news-details/2026/Newmont-Publishes-2025-Sustainability-and-Taxes--Royalties-Contribution-Reports-2026-9kmWUOVdXC/default.aspx",
+        "https://www.newmont.com/sustainability/Environment/default.aspx",
+        "https://stockanalysis.com/stocks/nem/revenue/"
+      ]
+    },
+    {
+      "id": 3,
+      "company_name": "Barrick Gold Corporation (now Barrick Mining Corporation)",
+      "ticker": "GOLD (NYSE) / ABX (TSX)",
+      "na_hq_address": "161 Bay Street, Suite 3700, Toronto, ON M5J 2S1, Canada",
+      "phone": "+1 416-861-9911 (Toll-free: 1-800-720-7415)",
+      "email": "investor@barrick.com",
+      "website": "https://www.barrick.com",
+      "annual_revenue": "$16.96 billion (2025)",
+      "primary_commodities": "Gold, Copper",
+      "electric_fleet_commitments": [
+        "4x Sandvik Artisan Z50 battery-electric haul trucks at Turquoise Ridge (NV): 50-tonne payload, AutoSwap battery system (~6 min change), 1,400+ hours production in trial",
+        "Sandvik DD422iE battery-electric development drill with Charging While Drilling technology",
+        "Komatsu 930E-5AT autonomous electric-drive trucks (290-tonne payload) deployed at NGM surface; Komatsu's 1,000th autonomous truck commissioned here (April 2026)",
+        "$440M Komatsu equipment contract (2025)",
+        "200 MW solar power plant at Nevada Gold Mines",
+        "50-60% underground fleet electrification target by 2025; 80-90% by 2030",
+        "30% Scope 1&2 emissions reduction by 2030; net-zero by 2050",
+        "687 MW renewable/cleaner energy capacity installed globally",
+        "Preparing potential IPO of North American gold assets"
+      ],
+      "key_mine_locations": [
+        {"name": "Nevada Gold Mines (61.5% JV)", "state": "Nevada", "type": "Multiple open-pit/underground gold operations (Cortez, Goldstrike, Carlin, Turquoise Ridge)"},
+        {"name": "Hemlo Mine", "state": "Ontario", "type": "Underground gold"}
+      ],
+      "projected_energy_demand": "Nevada Gold Mines is one of the largest gold mining complexes in the world. Full fleet electrification across the Cortez, Goldstrike and Carlin operations would require 30-80+ MW of additional charging capacity.",
+      "net_zero_target": "Net-zero by 2050; 30% reduction by 2030",
+      "lead_priority": "HIGH - Massive Nevada operations, active autonomous/renewable transition, potential NA IPO",
+      "sources": [
+        "https://farmonaut.com/mining/barrick-gold-company-sustainable-mining-innovation-in-2025",
+        "https://elkodaily.com/news/local/business/mining/article_bfeb5c3f-b18e-431c-9b70-a85c6ecc7fbb.html",
+        "https://www.eenews.net/articles/gold-miner-mulls-cutting-carbon-with-600m-nev-rail-line/",
+        "https://www.barrick.com/English/about/contact-us/default.aspx"
+      ]
+    },
+    {
+      "id": 4,
+      "company_name": "Teck Resources Limited",
+      "ticker": "TECK (NYSE/TSX)",
+      "na_hq_address": "Suite 3300, Bentall 5, 550 Burrard Street, Vancouver, BC V6C 0B3, Canada",
+      "phone": "+1 604-699-4000",
+      "email": "investor.relations@teck.com",
+      "website": "https://www.teck.com",
+      "annual_revenue": "$7.7-8.98 billion (2025/TTM)",
+      "primary_commodities": "Copper, Zinc, Steelmaking Coal",
+      "electric_fleet_commitments": [
+        "Definitive agreement for 30 Caterpillar Cat 794 ultra-class zero-emission trucks (battery-electric with trolley-assist), multi-phased deployment beginning 2027",
+        "MEDATech ALTDRIVE battery-electric transport truck at Highland Valley: 620 kW / ~830 hp, hauls copper concentrate 95 km roundtrip, regenerative braking, eliminates 418 tonnes CO2/year - world's first BEV copper concentrate hauler",
+        "Goal to displace equivalent of 1,000 internal combustion vehicles by 2025",
+        "33% carbon intensity reduction by 2030; net-zero Scope 2 by 2025; net-zero all GHG by 2050",
+        "Highland Valley Copper Mine Life Extension approved ($2.1-2.4B) extending mine to 2046",
+        "Diesel from mobile equipment is Teck's LARGEST source of direct GHG emissions",
+        "30 Cat 794 trucks (~2,800 kW each) represent estimated 50-80+ MW peak fleet demand"
+      ],
+      "key_mine_locations": [
+        {"name": "Highland Valley Copper", "state": "British Columbia", "type": "Open-pit copper - Canada's largest"},
+        {"name": "Trail Operations", "state": "British Columbia", "type": "Metallurgical complex"},
+        {"name": "Cardinal River", "state": "Alberta", "type": "Steelmaking coal"},
+        {"name": "Elk Valley Operations", "state": "British Columbia", "type": "Steelmaking coal"}
+      ],
+      "projected_energy_demand": "Highland Valley Copper alone, as Canada's largest open-pit copper mine with a $2.1-2.4B life extension to 2046, will be a prime site for full fleet electrification requiring 20-40+ MW of additional charging infrastructure.",
+      "net_zero_target": "Carbon-neutral by 2050; 33% carbon intensity reduction by 2030",
+      "lead_priority": "HIGH - Active EV truck trials, massive mine life extension, aggressive decarbonization targets",
+      "sources": [
+        "https://www.teck.com/news/news-releases/2022/teck-to-pilot-electric-transport-truck-at-highland-valley-copper-operations",
+        "https://www.mining.com/teck-pilots-electric-transport-truck-at-highland-valley-copper-operations/",
+        "https://www.teck.com/about/contact/"
+      ]
+    },
+    {
+      "id": 5,
+      "company_name": "Rio Tinto (North American Operations)",
+      "ticker": "RIO (NYSE/LSE/ASX)",
+      "na_hq_address": "136 South Main Street, Suite A403, Salt Lake City, UT 84101",
+      "phone": "+1 801-364-1874",
+      "email": "questions.usa@riotinto.com",
+      "website": "https://www.riotinto.com",
+      "annual_revenue": "$57.64 billion (2025, global)",
+      "primary_commodities": "Copper, Aluminum, Borates, Lithium, Titanium Dioxide",
+      "electric_fleet_commitments": [
+        "Boron Mine (CA): world's first open-pit mine to transition heavy machinery from fossil diesel - 45,000t CO2 annual abatement",
+        "Kennecott (UT): completed renewable diesel transition for entire 97-vehicle heavy fleet (haul trucks and machinery)",
+        "Kennecott Underground: commercially deploying Sandvik battery-electric TH550B trucks and LH518iB loaders",
+        "Exploring battery-swap electric truck technology for broader deployment",
+        "Using renewable diesel as interim bridge strategy ahead of full fleet electrification"
+      ],
+      "key_mine_locations": [
+        {"name": "Kennecott Copper Mine", "state": "Utah", "type": "Open-pit copper, plus underground expansion"},
+        {"name": "Boron Mine", "state": "California", "type": "Open-pit borates"},
+        {"name": "Resolution Copper (55% JV with BHP)", "state": "Arizona", "type": "Underground copper (development phase)"},
+        {"name": "Diavik Diamond Mine", "state": "Northwest Territories", "type": "Diamond (closure phase)"},
+        {"name": "Iron Ore Company of Canada", "state": "Newfoundland & Labrador", "type": "Iron ore"}
+      ],
+      "projected_energy_demand": "Kennecott's 97 heavy vehicles transitioning to full battery-electric would require 30-50+ MW of charging infrastructure. Resolution Copper, once operational, will be one of the largest underground copper mines in the world with significant electrification potential.",
+      "net_zero_target": "50% absolute emissions reduction by 2030; net-zero by 2050",
+      "lead_priority": "HIGH - Already deploying BEVs at Kennecott, Boron mine fully transitioned, Resolution Copper development",
+      "sources": [
+        "https://im-mining.com/2024/03/21/rio-tinto-backs-bev-use-at-kennecott-underground-with-growing-sandvik-fleet/",
+        "https://im-mining.com/2024/03/15/rio-tinto-bridging-time-gap-to-battery-electric-fleet-viability-with-biofuels-targeted-trolley-assist/",
+        "https://www.powerprogress.com/news/rio-tinto-completes-renewable-diesel-transition-at-kennecott/8039954.article",
+        "https://www.bhp.com/what-we-do/global-locations/united-states/resolution-copper-arizona"
+      ]
+    },
+    {
+      "id": 6,
+      "company_name": "BHP Group (North American Operations)",
+      "ticker": "BHP (NYSE/ASX/LSE)",
+      "na_hq_address": "1500 Post Oak Boulevard, Houston, TX 77056",
+      "phone": "+1 832-204-2700",
+      "email": "bhp@bhp.com",
+      "website": "https://www.bhp.com",
+      "annual_revenue": "$51.26 billion (FY2025, global - year ending June 2025)",
+      "primary_commodities": "Iron Ore, Copper, Potash, Coal",
+      "electric_fleet_commitments": [
+        "Welcomed first Caterpillar battery-electric haul trucks (Pilbara, global operations)",
+        "30% operational GHG emissions reduction target by FY2030 (from 2020 baseline) - on track",
+        "Aspirational net-zero by 2050 (Scope 1, 2, and 3)",
+        "NOTE: In 2025, BHP delayed fleet electrification timelines into the 2030s, citing slower-than-expected development of battery-electric truck technology by equipment manufacturers",
+        "Resolution Copper (45% JV with Rio Tinto) - $500M in preliminary spending announced for enabling works"
+      ],
+      "key_mine_locations": [
+        {"name": "Resolution Copper (45% JV)", "state": "Arizona", "type": "Underground copper (development - land exchange completed March 2026)"},
+        {"name": "Jansen Potash Mine", "state": "Saskatchewan", "type": "Potash (under construction)"},
+        {"name": "San Juan Coal Mine (divested)", "state": "New Mexico", "type": "Former operation"}
+      ],
+      "projected_energy_demand": "Jansen potash mine will be a massive new operation requiring substantial electrical infrastructure. Resolution Copper, once in production, would be one of the largest copper mines in NA. Combined new operations could require 50-100+ MW.",
+      "net_zero_target": "Net-zero by 2050; 30% reduction by FY2030",
+      "lead_priority": "MEDIUM - Delayed BEV timelines but massive new projects (Jansen, Resolution Copper) will need grid-scale power",
+      "sources": [
+        "https://discoveryalert.com.au/bhp-rio-tinto-battery-electric-haul-trucks-2025/",
+        "https://thedriven.io/2025/08/20/bhp-pushes-mine-fleet-electrification-plans-into-next-decade/",
+        "https://www.bhp.com/what-we-do/global-locations/united-states",
+        "https://www.bhp.com/what-we-do/global-locations/united-states/resolution-copper-arizona"
+      ]
+    },
+    {
+      "id": 7,
+      "company_name": "Vale S.A. (North American Operations / Vale Base Metals)",
+      "ticker": "VALE (NYSE)",
+      "na_hq_address": "200 Bay Street, Suite 1600, Royal Bank Plaza South Tower, Toronto, ON M5J 2K2, Canada",
+      "phone": "+1 416-362-6000",
+      "email": "vale.canada@vale.com",
+      "website": "https://www.vale.com / https://valebasemetals.com",
+      "annual_revenue": "$38.4 billion (2025, global)",
+      "primary_commodities": "Nickel, Copper, Cobalt, PGMs",
+      "electric_fleet_commitments": [
+        "Partnering with Glencore to acquire safest and most efficient battery-electric vehicles for underground mining",
+        "Transitioning to automation, digital monitoring, and remote-controlled mining equipment since 2025",
+        "Thompson operations restructuring with $200M investment from consortium partners - modernization opportunity",
+        "Advancing electrification across Sudbury underground mines"
+      ],
+      "key_mine_locations": [
+        {"name": "Sudbury Operations (multiple mines)", "state": "Ontario", "type": "Underground nickel-copper-PGM"},
+        {"name": "Thompson Operations", "state": "Manitoba", "type": "Underground nickel (restructuring - 18.9% Vale stake)"},
+        {"name": "Voisey's Bay Mine", "state": "Newfoundland & Labrador", "type": "Nickel-copper-cobalt"},
+        {"name": "Long Harbour Processing Plant", "state": "Newfoundland & Labrador", "type": "Nickel processing"}
+      ],
+      "projected_energy_demand": "Sudbury complex operates multiple deep underground mines. BEV transition for underground loaders, haul trucks, and utility vehicles across the complex could add 15-30+ MW of charging demand. Underground mines benefit most from BEVs (reduced ventilation costs).",
+      "net_zero_target": "33% absolute emissions reduction by 2030; net-zero by 2050",
+      "lead_priority": "MEDIUM-HIGH - Major underground mining complex ideal for BEV deployment, active BEV procurement partnership",
+      "sources": [
+        "https://www.northernontariobusiness.com/industry-news/mining/sudburys-major-mining-companies-co-operate-on-battery-vehicle-safety-11202479",
+        "https://farmonaut.com/mining/vale-thompson-manitoba-mining-innovations-sustainability-2026",
+        "https://valebasemetals.com/"
+      ]
+    },
+    {
+      "id": 8,
+      "company_name": "Agnico Eagle Mines Limited",
+      "ticker": "AEM (NYSE/TSX)",
+      "na_hq_address": "145 King Street East, Suite 400, Toronto, ON M5C 2Y7, Canada",
+      "phone": "+1 416-947-1212 (Toll-free: 1-888-822-6714)",
+      "email": "info@agnicoeagle.com",
+      "website": "https://www.agnicoeagle.com",
+      "annual_revenue": "$11.9 billion (2025)",
+      "primary_commodities": "Gold, Silver",
+      "electric_fleet_commitments": [
+        "Macassa Mine operates largest fleet of BEVs in the company: 22 scoops and 6 battery-electric trucks including 50-tonne Z50 BEV haul truck",
+        "Odyssey Mine (Quebec): Major Epiroc BEV and autonomous fleet order - ALL major production fleet (trucks, drills, LHDs) to be battery-electric with LTE network and automated 60-tonne trucks operated from surface",
+        "Testing Sandvik LH518B battery-electric loaders at LZ5 mine (Quebec)",
+        "Quebec's first battery-electric loader deployed at company operations (2022)",
+        "30% GHG emissions reduction target; 10-15% further reduction by 2026",
+        "Carbon neutrality commitment by 2050",
+        "Strategic investor in Perpetua Resources and Foran Mining - both pursuing electric mining"
+      ],
+      "key_mine_locations": [
+        {"name": "Canadian Malartic Mine", "state": "Quebec", "type": "Open-pit/underground gold - Canada's largest gold mine"},
+        {"name": "LaRonde Complex", "state": "Quebec", "type": "Underground gold"},
+        {"name": "Goldex Mine", "state": "Quebec", "type": "Underground gold"},
+        {"name": "Macassa Mine", "state": "Ontario", "type": "Underground gold"},
+        {"name": "Detour Lake Mine", "state": "Ontario", "type": "Open-pit gold"},
+        {"name": "Meliadine Mine", "state": "Nunavut", "type": "Underground gold"},
+        {"name": "Meadowbank/Amaruq Mine", "state": "Nunavut", "type": "Open-pit gold"},
+        {"name": "Hope Bay Mine", "state": "Nunavut", "type": "Underground gold"}
+      ],
+      "projected_energy_demand": "Operating 8+ mines across Canada with extensive underground operations ideal for BEV deployment. Full electrification of underground fleets across Quebec and Ontario mines could require 20-40+ MW of additional charging infrastructure.",
+      "net_zero_target": "Carbon-neutral by 2050",
+      "lead_priority": "HIGH - Already deploying BEVs at multiple sites, largest BEV fleet at Macassa, many underground mines ideal for electrification",
+      "sources": [
+        "https://www.miningmagazine.com/fleets/news/1442552/agnico-eagle-test-sandvik-battery-electric-loader",
+        "https://im-mining.com/2022/10/31/agnico-eagle-celebrates-quebecs-first-battery-electric-loader/",
+        "https://www.agnicoeagle.com/English/sustainability/stories-details/2022/Electrification-of-Mining-07-03-2022/default.aspx"
+      ]
+    },
+    {
+      "id": 9,
+      "company_name": "Kinross Gold Corporation",
+      "ticker": "KGC (NYSE/TSX)",
+      "na_hq_address": "25 York Street, 17th Floor, Toronto, ON M5J 2V5, Canada",
+      "phone": "+1 416-365-5123 (Toll-free: 1-866-561-3636)",
+      "email": "info@kinross.com",
+      "website": "https://www.kinross.com",
+      "annual_revenue": "$7.1 billion (2025)",
+      "primary_commodities": "Gold, Silver",
+      "electric_fleet_commitments": [
+        "Agreement with Komatsu to participate in Zero Emission Haulage Solution (ZEHS) development - providing application data and fleet performance requirements",
+        "In discussions with OEMs to explore Battery Electric Vehicle (BEV) conversions",
+        "30% GHG intensity reduction target (Scope 1&2) by 2030; net-zero by 2050",
+        "90% of Scope 1&2 emissions come from power generation and mine fleets - making fleet electrification critical",
+        "Tasiast solar plant: 34 MW solar + 18 MW battery system, providing ~20% of site power",
+        "36% of electricity across operations sourced from renewable sources",
+        "Autonomous haul trucks and automated drill rigs at Fort Knox"
+      ],
+      "key_mine_locations": [
+        {"name": "Fort Knox Mine", "state": "Alaska", "type": "Open-pit gold"},
+        {"name": "Round Mountain Mine", "state": "Nevada", "type": "Open-pit gold"},
+        {"name": "Bald Mountain Mine", "state": "Nevada", "type": "Open-pit gold"}
+      ],
+      "projected_energy_demand": "Three major NA open-pit operations. Fort Knox in Alaska presents unique challenges for electrification given remote location. Nevada operations more accessible for grid power. Estimated 15-30 MW additional per site for full fleet electrification.",
+      "net_zero_target": "25% emissions reduction target; expanding renewable capacity",
+      "lead_priority": "MEDIUM - Progressing on hybridization and autonomy, multiple large open-pit mines",
+      "sources": [
+        "https://farmonaut.com/mining/kinross-gold-kgc-2026-sustainability-at-kinross-mine",
+        "https://www.kinross.com/English/news-and-investors/news-releases/press-release-details/2026/Kinross-releases-2025-Sustainability-Report/default.aspx",
+        "https://www.kinross.com/about/contact-us/default.aspx"
+      ]
+    },
+    {
+      "id": 10,
+      "company_name": "Coeur Mining, Inc.",
+      "ticker": "CDE (NYSE)",
+      "na_hq_address": "200 South Wacker Drive, Suite 2100, Chicago, IL 60606",
+      "phone": "+1 312-489-5800",
+      "email": "info@coeur.com",
+      "website": "https://www.coeur.com",
+      "annual_revenue": "$2.1 billion (2025)",
+      "primary_commodities": "Gold, Silver, Zinc, Lead",
+      "electric_fleet_commitments": [
+        "Rochester Mine expansion completed - one of the largest silver-gold operations of its kind",
+        "General industry trend toward electrification; specific BEV commitments not yet publicly announced",
+        "Sustainability reporting in place with exploration and expansion programs at multiple sites"
+      ],
+      "key_mine_locations": [
+        {"name": "Rochester Mine", "state": "Nevada", "type": "Open-pit silver-gold (recently expanded)"},
+        {"name": "Wharf Mine", "state": "South Dakota", "type": "Open-pit gold"},
+        {"name": "Kensington Mine", "state": "Alaska", "type": "Underground gold"},
+        {"name": "Silvertip Mine", "state": "British Columbia", "type": "Underground silver-zinc-lead"},
+        {"name": "Palmarejo Mine", "state": "Chihuahua, Mexico", "type": "Underground gold-silver"}
+      ],
+      "projected_energy_demand": "Rochester Mine's major expansion makes it a prime candidate for fleet electrification. Kensington underground mine would benefit from BEV deployment. Estimated 10-25 MW additional for fleet electrification across NA operations.",
+      "net_zero_target": "Sustainability programs in development",
+      "lead_priority": "MEDIUM - Large recently-expanded Rochester mine, upcoming electrification opportunity",
+      "sources": [
+        "https://www.coeur.com/investors/news/news-details/2026/Coeur-Reports-Year-End-2025-Mineral-Reserves-and-Resources/default.aspx",
+        "https://www.coeur.com/contact/contact-coeur/default.aspx",
+        "https://en.wikipedia.org/wiki/Coeur_Mining"
+      ]
+    },
+    {
+      "id": 11,
+      "company_name": "Nutrien Ltd.",
+      "ticker": "NTR (NYSE/TSX)",
+      "na_hq_address": "Suite 1700, 211 19th Street East, Saskatoon, SK S7K 5R6, Canada",
+      "phone": "+1 306-933-8500",
+      "email": "investor.relations@nutrien.com",
+      "website": "https://www.nutrien.com",
+      "annual_revenue": "$26.9 billion (2025)",
+      "primary_commodities": "Potash, Nitrogen, Phosphate",
+      "electric_fleet_commitments": [
+        "Implementation of electrification of mining fleets across potash operations",
+        "Renewable energy integration to lower overall emissions",
+        "Automated material handling systems and remote monitoring platforms",
+        "Carbon capture implementation",
+        "Strategic ramp-up at Lanigan, Allan, and Vanscoy mines - modernization with new technology"
+      ],
+      "key_mine_locations": [
+        {"name": "Rocanville Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Allan Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Lanigan Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Vanscoy Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Cory Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Patience Lake Mine", "state": "Saskatchewan", "type": "Underground potash"}
+      ],
+      "projected_energy_demand": "Six underground potash mines in Saskatchewan, all operating at ~1,000m depth. Underground BEV deployment across 6 mines plus surface operations could add 30-60+ MW of charging demand. Saskatchewan's largest private employer (4,300 employees).",
+      "net_zero_target": "Industry leader in sustainable mining practices; integrating renewables and electrification",
+      "lead_priority": "HIGH - Six large underground mines in Saskatchewan, active fleet electrification program, $26.9B revenue",
+      "sources": [
+        "https://farmonaut.com/mining/nutrien-mines-top-2026-sustainable-agri-trends",
+        "https://www.nutrien.com/news/stories/transforming-mining-with-automation-a-journey-of-safety-and-efficiency",
+        "https://www.nutrien.com/about/our-business/locations?tab=potash"
+      ]
+    },
+    {
+      "id": 12,
+      "company_name": "The Mosaic Company",
+      "ticker": "MOS (NYSE)",
+      "na_hq_address": "101 E. Kennedy Boulevard, Suite 2500, Tampa, FL 33602",
+      "phone": "+1 813-775-4226",
+      "email": "investor.relations@mosaicco.com",
+      "website": "https://www.mosaicco.com",
+      "annual_revenue": "$12.05 billion (2025)",
+      "primary_commodities": "Potash, Phosphate",
+      "electric_fleet_commitments": [
+        "16 sustainability targets committed across environmental and social issues",
+        "Potash operations in Saskatchewan and New Mexico - underground mine electrification potential",
+        "Phosphate operations in Florida - surface mining electrification potential",
+        "Specific BEV fleet commitments not yet publicly detailed"
+      ],
+      "key_mine_locations": [
+        {"name": "Esterhazy K1/K2/K3 Mines", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Belle Plaine Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Colonsay Mine", "state": "Saskatchewan", "type": "Underground potash"},
+        {"name": "Carlsbad Mine", "state": "New Mexico", "type": "Underground potash (only US potash mine)"},
+        {"name": "Florida Phosphate Operations", "state": "Florida", "type": "Surface phosphate (multiple sites)"}
+      ],
+      "projected_energy_demand": "Five underground potash mines plus multiple Florida phosphate operations. Underground electrification across Saskatchewan mines plus surface fleet electrification in Florida could require 25-50+ MW of additional charging infrastructure.",
+      "net_zero_target": "Sustainability targets in place; specific net-zero date not publicly stated",
+      "lead_priority": "MEDIUM-HIGH - Large multi-site operator, massive underground and surface operations across 3 jurisdictions",
+      "sources": [
+        "https://mosaicco.com/ENVIRONMENT",
+        "https://mosaicco.com/North-America-Business",
+        "https://en.wikipedia.org/wiki/The_Mosaic_Company",
+        "https://www.zoominfo.com/hq/the-mosaic-co-office-address/53117809"
+      ]
+    },
+    {
+      "id": 13,
+      "company_name": "Foran Mining Corporation (now subsidiary of Eldorado Gold)",
+      "ticker": "FOM (TSX) - acquired by Eldorado Gold (ELD/EGO) April 2026",
+      "na_hq_address": "409 Granville Street, Suite 904, Vancouver, BC V6C 1Y2, Canada",
+      "phone": "+1 604-488-0008",
+      "email": "info@foranmining.com",
+      "website": "https://www.foranmining.com (redirects to eldoradogold.com)",
+      "annual_revenue": "Pre-revenue (development stage); Market cap ~CAD 3.2B at acquisition",
+      "primary_commodities": "Copper, Zinc, Gold, Silver",
+      "electric_fleet_commitments": [
+        "McIlvenna Bay designed as WORLD'S FIRST carbon-neutral copper mine",
+        "All underground mining to use battery-electric LHD vehicles and BEV haul trucks",
+        "Drilling with top hammer drill, blasted, mucked using BEV load-haul-dump vehicles",
+        "85 km, 110 kV dedicated transmission line to SaskPower grid energized March 2026",
+        "Heat recovery and water recycling programs complement electrification",
+        "Commercial production scheduled mid-2026, creating 400 jobs"
+      ],
+      "key_mine_locations": [
+        {"name": "McIlvenna Bay Mine", "state": "Saskatchewan", "type": "Underground copper-zinc (world's first carbon-neutral Cu mine)"}
+      ],
+      "projected_energy_demand": "Dedicated 110 kV transmission line built to connect to SaskPower grid indicates substantial power requirements. All-electric underground fleet from day one means 100% of mobile equipment charging demand is new electrical load. Estimated 10-20+ MW for full operation.",
+      "net_zero_target": "Carbon-neutral from Day 1 of operations - the world's first carbon-neutral copper mine",
+      "lead_priority": "VERY HIGH - Purpose-built all-electric mine, dedicated transmission line, carbon-neutral from inception, commercial production mid-2026",
+      "sources": [
+        "https://foranmining.com/projects/mcilvenna-bay-project/",
+        "https://foranmining.com/news-media/foran-news-releases/foran-achieves-major-milestone-with-energization-of-mcilvenna-bay-transmission-line/",
+        "https://www.miningweekly.com/article/canada-commits-c41m-to-foran-minings-mcilvenna-bay-project-2025-01-29",
+        "https://www.mining-technology.com/projects/mcilvenna-bay/"
+      ]
+    },
+    {
+      "id": 14,
+      "company_name": "Perpetua Resources Corp.",
+      "ticker": "PPTA (NASDAQ/TSX)",
+      "na_hq_address": "Suite 201, 405 S 8th Street, Boise, ID 83702",
+      "phone": "+1 208-901-3060",
+      "email": "info@perpetuaresources.com",
+      "website": "https://www.perpetuaresources.com",
+      "annual_revenue": "Pre-revenue (development stage); $714M cash at year-end 2025; $2.576B initial capital estimate",
+      "primary_commodities": "Gold, Antimony (only US-mined antimony source)",
+      "electric_fleet_commitments": [
+        "2025 Sustainability Report published June 2026 with ESG progress",
+        "Modern responsible mining approach for brownfield site restoration",
+        "Federal support: $59.2M Defense Production Act funding plus proposed $2.7B EXIM loan",
+        "Strategic equity investments from Agnico Eagle ($255M) and JPMorgan Chase",
+        "Gold and antimony production targeted for 2029",
+        "Specific electric fleet plans to be detailed in upcoming technical reports"
+      ],
+      "key_mine_locations": [
+        {"name": "Stibnite Gold Project", "state": "Idaho", "type": "Open-pit gold-antimony (under construction, production 2029)"}
+      ],
+      "projected_energy_demand": "As a greenfield mine starting construction now, Perpetua has the opportunity to design electrification into the mine plan from the start. Idaho location has access to hydroelectric power. Estimated 10-20 MW for a fully electrified open-pit operation.",
+      "net_zero_target": "Modern sustainability approach; specific targets in development",
+      "lead_priority": "MEDIUM - Greenfield opportunity to design electric from scratch, but production not until 2029. Strategic US antimony source with federal backing.",
+      "sources": [
+        "https://www.prnewswire.com/news-releases/perpetua-resources-publishes-2025-sustainability-report-302807635.html",
+        "https://www.prnewswire.com/news-releases/perpetua-resources-advances-construction-of-the-stibnite-gold-project-302787012.html",
+        "https://www.mining.com/perpetua-starts-building-1-3b-stibnite-gold-antimony-mine/",
+        "https://perpetuaresources.com/connect/"
+      ]
+    },
+    {
+      "id": 15,
+      "company_name": "Hecla Mining Company",
+      "ticker": "HL (NYSE)",
+      "na_hq_address": "6500 N. Mineral Drive, Suite 200, Coeur d'Alene, ID 83815",
+      "phone": "+1 208-769-4100",
+      "email": "hmc-info@hecla-mining.com",
+      "website": "https://www.hecla.com",
+      "annual_revenue": "$720 million (2025, annualized from August 2025 data)",
+      "primary_commodities": "Silver, Gold, Lead, Zinc",
+      "electric_fleet_commitments": [
+        "Deployed Artisan Vehicle Systems battery-powered 153 loaders at Lucky Friday mine",
+        "Battery power reduces ventilation and cooling expenses in deep underground operations",
+        "Oldest US precious metals mining company - 45% of US silver production",
+        "Lucky Friday deep underground mine ideally suited for BEV transition"
+      ],
+      "key_mine_locations": [
+        {"name": "Lucky Friday Mine", "state": "Idaho", "type": "Deep underground silver-lead-zinc"},
+        {"name": "Greens Creek Mine", "state": "Alaska", "type": "Underground silver-gold-zinc-lead"},
+        {"name": "Casa Berardi Mine", "state": "Quebec", "type": "Underground gold"},
+        {"name": "Keno Hill Mine", "state": "Yukon", "type": "Underground silver-lead-zinc"}
+      ],
+      "projected_energy_demand": "Four underground mines across NA. BEV deployment at deep underground operations provides major ventilation cost savings. Full fleet electrification across 4 sites estimated at 10-25 MW of additional charging demand.",
+      "net_zero_target": "Sustainability programs active; BEV deployment underway at Lucky Friday",
+      "lead_priority": "MEDIUM - Already using BEV loaders, multiple deep underground mines ideal for electrification, but smaller revenue base",
+      "sources": [
+        "https://www.miningmagazine.com/technology/news/1264125/hecla-chooses-battery-power-lucky-friday",
+        "https://www.hecla.com/operations/lucky-friday-idaho",
+        "https://www.hecla.com/contact"
+      ]
+    },
+    {
+      "id": 16,
+      "company_name": "South32 Limited (Hermosa Project)",
+      "ticker": "S32 (ASX) / SOUHY (OTC)",
+      "na_hq_address": "Hermosa Project Office, Patagonia, AZ 85624 (Corporate: Perth, Australia)",
+      "phone": "+1 520-394-2271 (Hermosa Project)",
+      "email": "info@south32.net",
+      "website": "https://www.south32.net",
+      "annual_revenue": "$7.9 billion (FY2025, global)",
+      "primary_commodities": "Zinc, Lead, Silver, Manganese, Alumina",
+      "electric_fleet_commitments": [
+        "LARGEST Sandvik BEV order ever: SEK 750 million (~$71M USD) for 22 battery-electric vehicles out of 42-unit underground fleet at Hermosa",
+        "Equipment includes: 6x Sandvik DS412iE bolters, 5x DD422iE development drills, 4x DL422iE longhole drills, 4x Toro LH518iB loaders, 3x Toro TH665iB trucks",
+        "Additional order: 35 pieces from Normet including BEVs",
+        "Deliveries begin Q4 2026 through 2030 (bulk 2026-2027)",
+        "Hermosa is a designated US critical minerals project (zinc, lead, silver, manganese)"
+      ],
+      "key_mine_locations": [
+        {"name": "Hermosa Project (Taylor & Clark deposits)", "state": "Arizona", "type": "Underground zinc-lead-silver-manganese (under development)"}
+      ],
+      "projected_energy_demand": "All-electric underground fleet from initial production. 22 BEV units plus 35 Normet units represent a fully electrified mine design. Estimated 10-20+ MW of charging infrastructure needed. Critical minerals designation may accelerate grid connection.",
+      "net_zero_target": "Net-zero by 2050; Hermosa designed with electrification from inception",
+      "lead_priority": "VERY HIGH - Record BEV equipment order, critical minerals project, purpose-built electric mine in Arizona",
+      "sources": [
+        "https://www.home.sandvik/en/news-and-media/news/2025/04/sandvik-wins-record-order-for-battery-electric-mining-equipment/",
+        "https://electrek.co/2025/04/28/sandvik-scores-record-electric-equipment-order-at-critical-mineral-mine-in-arizona/",
+        "https://im-mining.com/2025/04/23/sandvik-to-supply-its-largest-ever-battery-electric-vehicle-fleet-to-south32/"
+      ]
+    },
+    {
+      "id": 17,
+      "company_name": "Eldorado Gold Corporation (including Lamaque Mine)",
+      "ticker": "EGO (NYSE) / ELD (TSX)",
+      "na_hq_address": "1188 Bentall 5, 550 Burrard Street, Vancouver, BC V6C 2B5, Canada",
+      "phone": "+1 604-687-4018",
+      "email": "info@eldoradogold.com",
+      "website": "https://www.eldoradogold.com",
+      "annual_revenue": "$1.7 billion (2025 est.)",
+      "primary_commodities": "Gold, Copper, Zinc",
+      "electric_fleet_commitments": [
+        "Lamaque Mine (Val-d'Or, Quebec): expanded from 2 to 12 Sandvik battery-electric units",
+        "SEK 160 million BEV order (Q4 2025) for trucks and loaders; SEK 65 million order (Q3 2025) - deliveries mid-2026 into 2027",
+        "Acquired Foran Mining (C$3.8B, April 2026) gaining world's first carbon-neutral copper mine (McIlvenna Bay)",
+        "Aggressive BEV adoption strategy across Canadian underground operations"
+      ],
+      "key_mine_locations": [
+        {"name": "Lamaque Mine", "state": "Quebec", "type": "Underground gold"},
+        {"name": "McIlvenna Bay Mine (via Foran acquisition)", "state": "Saskatchewan", "type": "Underground copper-zinc (world's first carbon-neutral Cu mine)"}
+      ],
+      "projected_energy_demand": "Lamaque's 12 BEV units and McIlvenna Bay's all-electric fleet combined represent 15-25+ MW of new charging demand across Quebec and Saskatchewan operations.",
+      "net_zero_target": "Active electrification strategy; McIlvenna Bay carbon-neutral from Day 1",
+      "lead_priority": "HIGH - Aggressive BEV adoption at Lamaque, acquired Foran's all-electric McIlvenna Bay mine",
+      "sources": [
+        "https://chargedevs.com/newswire/eldorado-gold-orders-10-sandvik-electric-vehicles-for-quebec-mining-complex/",
+        "https://news.cision.com/sandvik/r/sandvik-wins-large-order-for-battery-electric-mining-equipment-in-canada,c4284326",
+        "https://im-mining.com/2026/02/02/eldorado-gold-to-acquire-foran-mining-in-c3-8-billion-deal/"
+      ]
+    },
+    {
+      "id": 18,
+      "company_name": "Hudbay Minerals Inc.",
+      "ticker": "HBM (NYSE/TSX)",
+      "na_hq_address": "25 York Street, Suite 800, Toronto, ON M5J 2V5, Canada",
+      "phone": "+1 416-362-8181",
+      "email": "info@hudbayminerals.com",
+      "website": "https://www.hudbayminerals.com",
+      "annual_revenue": "$2.1 billion (2025 est.)",
+      "primary_commodities": "Copper, Gold, Zinc, Silver",
+      "electric_fleet_commitments": [
+        "Epiroc BEV fleet expanded to 10 units at Lalor mine, 2 more being added in 2026",
+        "Equipment: Epiroc Boomer M20 SG (BEV face drilling rig), Scooptram ST18 SG and ST14 SG (BEV loaders), Minetruck MT42 SG (BEV hauler)",
+        "Order value: ~MSEK 100 (Q1 2025); deliveries Q1-Q3 2025",
+        "25% reduction in Scope 1 GHG emissions intensity target by 2030 (vs. 2022 baseline)"
+      ],
+      "key_mine_locations": [
+        {"name": "Lalor Mine", "state": "Manitoba", "type": "Underground gold-copper-zinc"},
+        {"name": "777 Mine (closed)", "state": "Manitoba", "type": "Former underground copper-zinc"},
+        {"name": "Constancia Mine", "state": "Peru", "type": "Open-pit copper-gold"},
+        {"name": "Copper World Project", "state": "Arizona", "type": "Open-pit copper (development)"}
+      ],
+      "projected_energy_demand": "Lalor mine's 12 BEV units represent the beginning of full fleet electrification. Copper World project in Arizona would add significant new demand if developed with electric fleet. Estimated 10-20+ MW across NA operations.",
+      "net_zero_target": "25% Scope 1 GHG intensity reduction by 2030",
+      "lead_priority": "HIGH - Active BEV deployment expanding at Lalor, developing new Arizona copper project",
+      "sources": [
+        "https://www.epirocgroup.com/en/media/corporate-press-releases/2025/20250313-epiroc-wins-large-order-for-battery-electric-vehicles-for-canadian-gold-and-copper-mine",
+        "https://www.canadianminingjournal.com/news/epiroc-wins-major-order-of-battery-evs-for-manitoba-gold-and-copper-mine/",
+        "https://im-mining.com/2025/03/13/epiroc-wins-large-bev-fleet-order-from-hudbay-for-lalor-mine/"
+      ]
+    }
+  ],
+  "summary": {
+    "total_companies": 18,
+    "companies_with_active_bev_deployments": ["Freeport-McMoRan", "Rio Tinto", "Agnico Eagle", "Hecla Mining", "Foran Mining/Eldorado Gold", "Barrick Gold", "South32", "Hudbay Minerals", "Newmont (Borden Mine)"],
+    "companies_with_bev_trials_partnerships": ["Teck Resources", "BHP", "Vale", "Kinross Gold"],
+    "companies_with_stated_electrification_plans": ["Nutrien", "Mosaic Company", "Coeur Mining", "Perpetua Resources"],
+    "highest_priority_leads": [
+      "Foran Mining/Eldorado Gold - World's first carbon-neutral copper mine, all-electric fleet from Day 1, production mid-2026",
+      "South32 Hermosa - Record $71M Sandvik BEV order, 22 electric vehicles for Arizona critical minerals mine",
+      "Freeport-McMoRan - Largest US copper producer, Cat 793 BEV trial, $3B Morenci expansion",
+      "Newmont - $100M Caterpillar electrification deal, world's first all-electric underground gold mine (Borden), Cat 793 XE deployed",
+      "Barrick Gold - 4x Sandvik Z50 BEV trucks at Turquoise Ridge, Komatsu autonomous fleet, 200 MW solar at NGM",
+      "Teck Resources - 30 Cat 794 zero-emission trucks ordered, MEDATech BEV transport truck at Highland Valley",
+      "Rio Tinto - BEVs deployed at Kennecott underground, Boron mine fully transitioned from fossil diesel",
+      "Agnico Eagle - 28+ BEVs operating at Macassa, full BEV fleet planned for Odyssey mine",
+      "Hudbay Minerals - 12 Epiroc BEV units at Lalor mine, expanding fleet",
+      "Nutrien - 6 underground potash mines, active fleet electrification program"
+    ],
+    "total_estimated_na_charging_demand": "Combined electrification across all 18 companies could create 400-900+ MW of new charging infrastructure demand across North America",
+    "key_equipment_suppliers": [
+      "Caterpillar - 793 XE / 794 battery-electric haul truck platforms (Freeport, Newmont, BHP, Rio Tinto, Teck)",
+      "Komatsu - 930E-5AT electric drive / Zero Emission Haulage Solution (Barrick/NGM, Kinross)",
+      "Sandvik - TH550B/TH665iB BEV trucks, LH518B/LH518iB BEV loaders, DD422iE/DS412iE/DL422iE BEV drills, Artisan Z50 BEV truck (Rio Tinto, Agnico Eagle, Barrick, South32, Eldorado Gold, Hecla)",
+      "Epiroc - Boomer M20 SG, Scooptram ST14/ST18 SG, Minetruck MT42 SG BEV equipment (Hudbay, Agnico Eagle Odyssey)",
+      "MEDATech - ALTDRIVE battery-electric transport trucks (Teck)",
+      "Normet - Battery-electric underground support vehicles (South32)",
+      "XCMG - XDR80TE 72-ton battery-electric haul trucks (Vale trial)"
+    ]
+  }
+}
