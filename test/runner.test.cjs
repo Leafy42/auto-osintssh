@@ -56,6 +56,7 @@ const simChecks = [
   ['subfinder', R.simSubfinder, 'subfinder', e => e.length >= 4 && e.every(x => x.type === 'domain')],
   ['httpx', R.simHttpx, 'httpx', e => e.some(x => x.type === 'url' && /www\./.test(x.data))],
   ['dnsx', R.simDnsx, 'dnsx', e => e.some(x => x.type === 'domain') && e.some(x => x.type === 'ip')],
+  ['bbot', R.simBbot, 'bbot', e => e.some(x => x.type === 'domain') && e.some(x => x.type === 'port') && e.some(x => x.type === 'high')],
 ];
 
 /* ---- scope allowlist + CIDR ---- */
