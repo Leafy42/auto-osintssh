@@ -7,3 +7,4 @@ holotable*.json
 ai/__pycache__/
 ai/**/loot/
 loot/
+ai/**/__pycache__/

@@ -1,0 +1,57 @@
+# LLaMA-Factory QLoRA config for the OSINT recon worker.
+# Run:  llamafactory-cli train ai/finetune/qwen_qlora.yaml
+# Docs: https://github.com/hiyouga/LLaMA-Factory  (verify keys against your version)
+#
+# Assumes you converted data first:
+#   python3 ai/finetune/convert_to_sharegpt.py data/train.jsonl ai/finetune/data/train_sharegpt.json
+#   python3 ai/finetune/convert_to_sharegpt.py data/val.jsonl   ai/finetune/data/val_sharegpt.json
+# and that dataset_info.json (this dir) is the --dataset_dir.
+
+### model — swap for any tool-capable open base you can serve (Apache/MIT preferred)
+model_name_or_path: Qwen/Qwen2.5-14B-Instruct
+trust_remote_code: true
+
+### method — QLoRA (4-bit base, train adapters)
+stage: sft
+do_train: true
+finetuning_type: lora
+lora_rank: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target: all
+quantization_bit: 4          # QLoRA; drop this line for plain LoRA if VRAM allows
+
+### dataset
+dataset_dir: ai/finetune           # dir containing dataset_info.json
+dataset: osint_recon               # key from dataset_info.json
+eval_dataset: osint_recon_val
+template: qwen                     # MUST match the model family (llama3 / mistral / glm4 / ...)
+cutoff_len: 8192
+overwrite_cache: true
+preprocessing_num_workers: 8
+# keep some general instruction data mixed in to fight catastrophic forgetting:
+# dataset: osint_recon,alpaca_en_demo
+# interleave_probs: "0.7,0.3"
+# mix_strategy: interleave_under
+
+### output
+output_dir: ai/finetune/out/qwen-osint-qlora
+logging_steps: 5
+save_steps: 100
+plot_loss: true
+overwrite_output_dir: true
+
+### train
+per_device_train_batch_size: 1
+gradient_accumulation_steps: 8
+learning_rate: 1.0e-4
+num_train_epochs: 3.0
+lr_scheduler_type: cosine
+warmup_ratio: 0.05
+bf16: true
+gradient_checkpointing: true
+
+### eval
+per_device_eval_batch_size: 1
+eval_strategy: steps
+eval_steps: 100
