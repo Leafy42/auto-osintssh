@@ -45,6 +45,7 @@ const REGISTRY = {
   whois:        { bin:'whois',        tag:'whois',        args:t=>[t],                                  sim:simWhois },
   dnsrecon:     { bin:'dnsrecon',     tag:'dnsrecon',     args:t=>['-d',t,'-j','-'],                    sim:simDnsrecon },
   host:         { bin:'host',         tag:'dnsrecon',     args:t=>['-a',t],                             sim:simHost },
+  bbot:         { bin:'bbot',         tag:'bbot',         args:t=>['-t',t,'-y','-f','subdomain-enum'],  sim:simBbot },
 };
 
 /* ---- scope allowlist (optional --scope file) ---- */
@@ -150,6 +151,22 @@ function simHost(t){
     `${t} has address 203.0.113.42`,
     `${t} mail is handled by 10 mail.${t}`,
     `${t} has IPv6 address 2001:db8::42`,
+  ];
+}
+// BBOT emits NDJSON — one event per line, each tagged with a scope_distance
+// (hops from the seed target). The page's bbot parser reads this directly.
+function simBbot(t){
+  const ts = Math.floor(Date.now()/1000);
+  return [
+    JSON.stringify({type:'DNS_NAME',      data:t,                   module:'TARGET',       scope_distance:0, timestamp:ts}),
+    JSON.stringify({type:'DNS_NAME',      data:'www.'+t,            module:'crt',          scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'DNS_NAME',      data:'mail.'+t,           module:'crt',          scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'IP_ADDRESS',    data:'203.0.113.42',      module:'A',            scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'OPEN_TCP_PORT', data:'203.0.113.42:443',  module:'portscan',     scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'URL',           data:'https://www.'+t+'/',module:'httpx',        scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'EMAIL_ADDRESS', data:'admin@'+t,          module:'emailformat',  scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'FINDING',       data:{description:'Open S3 bucket',host:'203.0.113.42'}, module:'bucket_amazon', scope_distance:1, timestamp:ts}),
+    JSON.stringify({type:'VULNERABILITY', data:{severity:'HIGH',description:'CVE-2023-1234 exposed admin panel',host:'203.0.113.42'}, module:'nuclei', scope_distance:1, timestamp:ts}),
   ];
 }
 
@@ -373,5 +390,5 @@ if (require.main === module){
 /* export pure parts for tests */
 module.exports = { REGISTRY, validTarget, buildArgv, decodeFrames, encodeFrame,
   ipToInt, ipInCidr, inScope, parseScope,
-  simNmap, simHarvester, simAmass, simWhois, simDnsrecon, simHost, simSubfinder, simHttpx, simDnsx,
+  simNmap, simHarvester, simAmass, simWhois, simDnsrecon, simHost, simSubfinder, simHttpx, simDnsx, simBbot,
   startServer, parseArgs };

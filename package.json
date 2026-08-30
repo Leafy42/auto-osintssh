@@ -10,7 +10,7 @@
     "runner": "node bridge/pipe-server.js",
     "runner:exec": "node bridge/pipe-server.js --exec"
   },
-  "keywords": ["osint", "timeline", "spiderfoot", "nmap", "recon", "visualization", "offline"],
+  "keywords": ["osint", "timeline", "spiderfoot", "bbot", "nmap", "recon", "visualization", "offline", "chain-of-custody"],
   "license": "MIT",
   "private": true
 }

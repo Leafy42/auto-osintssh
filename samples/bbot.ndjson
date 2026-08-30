@@ -1,0 +1,13 @@
+{"type":"DNS_NAME","data":"target.example.com","module":"TARGET","scope_distance":0,"timestamp":1717977600,"tags":["target","in-scope"]}
+{"type":"DNS_NAME","data":"www.target.example.com","module":"crt","scope_distance":1,"timestamp":1717977601,"tags":["subdomain","in-scope"]}
+{"type":"DNS_NAME","data":"mail.target.example.com","module":"crt","scope_distance":1,"timestamp":1717977601,"tags":["subdomain","in-scope"]}
+{"type":"DNS_NAME","data":"vpn.target.example.com","module":"otx","scope_distance":1,"timestamp":1717977602,"tags":["subdomain","in-scope"]}
+{"type":"IP_ADDRESS","data":"203.0.113.42","module":"A","scope_distance":1,"timestamp":1717977603,"tags":["ipv4","in-scope"]}
+{"type":"OPEN_TCP_PORT","data":"203.0.113.42:443","module":"portscan","scope_distance":1,"timestamp":1717977604,"tags":["open-port"]}
+{"type":"OPEN_TCP_PORT","data":"203.0.113.42:22","module":"portscan","scope_distance":1,"timestamp":1717977604,"tags":["open-port"]}
+{"type":"URL","data":"https://www.target.example.com/","module":"httpx","scope_distance":1,"timestamp":1717977605,"tags":["status-200"]}
+{"type":"TECHNOLOGY","data":{"technology":"nginx","host":"www.target.example.com","url":"https://www.target.example.com/"},"module":"wappalyzer","scope_distance":1,"timestamp":1717977606,"tags":["webtech"]}
+{"type":"EMAIL_ADDRESS","data":"admin@target.example.com","module":"emailformat","scope_distance":1,"timestamp":1717977607,"tags":["email"]}
+{"type":"FINDING","data":{"description":"Open Amazon S3 bucket: target-backups","host":"203.0.113.42"},"module":"bucket_amazon","scope_distance":1,"timestamp":1717977608,"tags":["storage-bucket"]}
+{"type":"VULNERABILITY","data":{"severity":"HIGH","description":"CVE-2023-1234 exposed admin panel","host":"203.0.113.42","url":"https://vpn.target.example.com/admin"},"module":"nuclei","scope_distance":1,"timestamp":1717977609,"tags":["cve","high"]}
+{"type":"ASN","data":"AS64500","module":"asn","scope_distance":1,"timestamp":1717977610,"tags":["asn"]}

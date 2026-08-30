@@ -14,6 +14,53 @@
 let _uid = 0;
 function uid(p){ return (p||'id') + '_' + (Date.now().toString(36)) + (_uid++).toString(36) + Math.random().toString(36).slice(2,6); }
 
+/* ----------------------------------------------------- SHA-256 (offline)
+   A self-contained, dependency-free SHA-256 over a UTF-8 string → lowercase
+   hex. Used to fingerprint every ingested artifact for the chain-of-custody
+   log, so a fingerprint can be reproduced offline (matches `sha256sum`) on an
+   air-gapped box with no Web Crypto / secure-context requirement. */
+function sha256(input){
+  let bytes;
+  if (input instanceof Uint8Array) bytes = input;
+  else if (typeof TextEncoder !== 'undefined') bytes = new TextEncoder().encode(String(input==null?'':input));
+  else { const t=unescape(encodeURIComponent(String(input==null?'':input))); bytes=new Uint8Array(t.length); for(let i=0;i<t.length;i++) bytes[i]=t.charCodeAt(i); }
+  const K=new Uint32Array([
+    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+  let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
+  const l=bytes.length, withOne=l+1, pad=(56-(withOne%64)+64)%64, total=withOne+pad+8;
+  const m=new Uint8Array(total); m.set(bytes); m[l]=0x80;
+  const dv=new DataView(m.buffer);
+  dv.setUint32(total-8, Math.floor(l/0x20000000)>>>0, false);   // high 32 bits of bit-length
+  dv.setUint32(total-4, (l*8)>>>0, false);                      // low 32 bits
+  const w=new Uint32Array(64), rotr=(x,n)=>(x>>>n)|(x<<(32-n));
+  for (let off=0; off<total; off+=64){
+    for (let i=0;i<16;i++) w[i]=dv.getUint32(off+i*4,false);
+    for (let i=16;i<64;i++){
+      const s0=rotr(w[i-15],7)^rotr(w[i-15],18)^(w[i-15]>>>3);
+      const s1=rotr(w[i-2],17)^rotr(w[i-2],19)^(w[i-2]>>>10);
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
+    for (let i=0;i<64;i++){
+      const S1=rotr(e,6)^rotr(e,11)^rotr(e,25), ch=(e&f)^(~e&g);
+      const t1=(h+S1+ch+K[i]+w[i])>>>0;
+      const S0=rotr(a,2)^rotr(a,13)^rotr(a,22), maj=(a&b)^(a&c)^(b&c);
+      const t2=(S0+maj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    h0=(h0+a)>>>0;h1=(h1+b)>>>0;h2=(h2+c)>>>0;h3=(h3+d)>>>0;h4=(h4+e)>>>0;h5=(h5+f)>>>0;h6=(h6+g)>>>0;h7=(h7+h)>>>0;
+  }
+  const hex=x=>('00000000'+(x>>>0).toString(16)).slice(-8);
+  return hex(h0)+hex(h1)+hex(h2)+hex(h3)+hex(h4)+hex(h5)+hex(h6)+hex(h7);
+}
+
 /* -------------------------------------------------------------- time */
 // Parse a wide range of timestamp forms → epoch ms, or null if not a time.
 function parseTime(v){
@@ -460,14 +507,97 @@ function parseSecrets(text){                  // gitleaks / trufflehog JSON
   return out.length?out:parseJSONGeneric(text,'secrets');
 }
 
+/* -------- BBOT (Black Lantern Security) — recursive recon scanner --------
+   Ingests BBOT's machine outputs: NDJSON (one event/line), the CSV export
+   (`Event type,Event data,IP Address,Source Module,Scope Distance,…`), and the
+   bracketed console form (`[DNS_NAME]  www.x.com  sslcert`). BBOT tags every
+   event with a "scope distance" (hops from the seed target) — we surface it in
+   the module so the recursion depth travels onto the table. */
+const BBOT_TYPES = {
+  DNS_NAME:'domain', DNS_NAME_UNRESOLVED:'domain', VHOST:'domain', RAW_DNS_RECORD:'dns',
+  IP_ADDRESS:'ip', IP_RANGE:'cidr', OPEN_TCP_PORT:'port', OPEN_UDP_PORT:'port',
+  URL:'url', URL_UNVERIFIED:'url', HTTP_RESPONSE:'url', WEBSCREENSHOT:'screenshot',
+  EMAIL_ADDRESS:'email', ASN:'asn', AZURE_TENANT:'org', ORG_STUB:'org',
+  FINDING:'finding', VULNERABILITY:'vuln', TECHNOLOGY:'technology', WAF:'waf',
+  STORAGE_BUCKET:'storage', SOCIAL:'social', PROTOCOL:'protocol', CODE_REPOSITORY:'repo',
+};
+function bbotType(rawType, dataStr){
+  if (BBOT_TYPES[rawType]) return BBOT_TYPES[rawType];
+  const c = classify(dataStr); return c!=='data' ? c : String(rawType||'data').toLowerCase();
+}
+// BBOT's `data` is a string for most events, an object for FINDING/VULNERABILITY/
+// HTTP_RESPONSE/TECHNOLOGY. Reduce it to one readable string.
+function bbotData(d){
+  if (d==null) return '';
+  if (typeof d !== 'object') return String(d);
+  // headline field by BBOT schema: description (FINDING/VULNERABILITY) → technology
+  // (TECHNOLOGY) → url (HTTP_RESPONSE/URL) → name → host. The url/host that lose
+  // out are still recoverable from the raw artifact captured in the provenance log.
+  let s = d.description || d.technology || d.url || d.name || d.data || d.host || '';
+  if (!s) try{ s = JSON.stringify(d); }catch(_){ s = String(d); }
+  if (d.host && String(s).indexOf(d.host)<0) s = s+' ('+d.host+')';
+  return String(s);
+}
+function bbotEvent(o){
+  if (!o || o.type==null) return null;
+  const rawType = String(o.type);
+  const dataStr = bbotData(o.data);
+  if (!dataStr) return null;
+  const sev = (o.data && typeof o.data==='object' && o.data.severity) ? String(o.data.severity).toLowerCase() : '';
+  const type = (rawType==='VULNERABILITY' && sev) ? sev : bbotType(rawType, dataStr);
+  const mod = [o.module||'bbot', (o.scope_distance!=null?('d'+o.scope_distance):'')].filter(Boolean).join(' ');
+  return ev({ t: parseTime(o.timestamp), type, module: mod, data: dataStr, source:'bbot' });
+}
+function parseBbotCSV(text){
+  const rows = parseCSV(text); if (rows.length<2) return [];
+  const h = rows[0];
+  const iType  = headerIndex(h, ['event type','type']);
+  const iData  = headerIndex(h, ['event data','data']);
+  const iMod   = headerIndex(h, ['source module','module']);
+  const iScope = headerIndex(h, ['scope distance','scope']);
+  const out=[];
+  for (const r of rows.slice(1)){
+    if (!r.join('').trim()) continue;
+    const rawType = iType>=0 ? r[iType] : '';
+    const dataStr = iData>=0 ? r[iData] : r[r.length-1];
+    if (dataStr==null || dataStr==='') continue;
+    const mod = [(iMod>=0?r[iMod]:'')||'bbot', (iScope>=0&&r[iScope]!==''?('d'+r[iScope]):'')].filter(Boolean).join(' ');
+    out.push(ev({ type: bbotType(rawType, dataStr), module: mod, data: dataStr, source:'bbot' }));
+  }
+  return out;
+}
+function parseBbot(text){
+  const s = String(text).trim();
+  if (/^Event type\s*,/i.test(s)) return parseBbotCSV(s);
+  const out=[];
+  for (let line of s.split(/\r?\n/)){
+    line=line.trim(); if(!line) continue;
+    if (line[0]==='{'){ try{ const e=bbotEvent(JSON.parse(line)); if(e) out.push(e); continue; }catch(_){} }
+    // bracketed console form: "[DNS_NAME]   www.x.com   sslcert"
+    const m=line.replace(/\[[0-9;]*m/g,'').match(/^\[([A-Z_0-9]+)\]\s+(.+)$/);
+    if (m){
+      const parts=m[2].trim().split(/\t+|\s{2,}/);
+      const dataStr=(parts[0]||'').trim(); const mod=(parts[1]||'bbot').trim();
+      if (dataStr) out.push(ev({type:bbotType(m[1],dataStr), module:mod, data:dataStr, source:'bbot'}));
+      continue;
+    }
+    out.push(ev({type:classify(line), module:'bbot', data:line, source:'bbot'}));
+  }
+  return out;
+}
+
 /* -------- format auto-detection -------- */
 function detectTool(text, filename){
   const name=(filename||'').toLowerCase();
   const s=String(text||'').trim();
   const head=s.slice(0,4000);
-  const byName={spiderfoot:/spiderfoot/,nmap:/nmap/,masscan:/masscan/,amass:/amass/,subfinder:/subfinder|assetfinder|sublist3r|findomain/,httpx:/httpx/,nuclei:/nuclei/,dnsx:/dnsx/,shodan:/shodan/,whois:/whois/,theharvester:/harvest/,urls:/gau|wayback|katana|hakrawler/,maltego:/maltego/,secrets:/gitleaks|trufflehog|secret/,censys:/censys/};
+  const byName={bbot:/bbot/,spiderfoot:/spiderfoot/,nmap:/nmap/,masscan:/masscan/,amass:/amass/,subfinder:/subfinder|assetfinder|sublist3r|findomain/,httpx:/httpx/,nuclei:/nuclei/,dnsx:/dnsx/,shodan:/shodan/,whois:/whois/,theharvester:/harvest/,urls:/gau|wayback|katana|hakrawler/,maltego:/maltego/,secrets:/gitleaks|trufflehog|secret/,censys:/censys/};
   for (const k in byName) if (byName[k].test(name)) return k;
   if (!head) return 'lines';
+  // BBOT first — its NDJSON always carries scope_distance/module_sequence, and
+  // its CSV has a distinctive header; check before the generic JSON/CSV sniffers.
+  if (/"scope_distance"\s*:|"module_sequence"\s*:/.test(head)) return 'bbot';
+  if (/^Event type\s*,\s*Event data\s*,/im.test(head)) return 'bbot';
   if (/"template-id"|"matched-at"/.test(head) || /^\[[\w-]+\]\s*\[\w+\]\s*\[(info|low|medium|high|critical)\]/im.test(head)) return 'nuclei';
   if (/"status_code"|"webserver"|"content_length"/.test(head) && /"url"|"host"/.test(head)) return 'httpx';
   if (/^open\s+(tcp|udp)\s+\d+/im.test(head)) return 'masscan';
@@ -488,6 +618,7 @@ function detectTool(text, filename){
 const TOOLS = {
   auto:        { label:'⚡ Auto-detect',color:'#16e0ff', parse:t=>(TOOLS[detectTool(t)]||TOOLS.lines).parse(t), detect:true },
   spiderfoot:  { label:'SpiderFoot',   color:'#16e0ff', parse:t=>parseSpiderfoot(t) },
+  bbot:        { label:'BBOT',         color:'#ff5d8f', parse:t=>parseBbot(t) },
   theharvester:{ label:'theHarvester', color:'#9d7bff', parse:t=>parseHarvester(t) },
   nmap:        { label:'Nmap',         color:'#27e8a7', parse:t=>parseNmap(t) },
   masscan:     { label:'Masscan',      color:'#ff6b35', parse:t=>parseMasscan(t) },
@@ -573,6 +704,7 @@ function init(){
     cam: { x: 0, y: 0, zoom: 1 },
     timelines: [], notes: [], links: [], strokes: [],
     hiddenSources: {},
+    provenance: [],          // append-only chain-of-custody log (see logProvenance)
   };
   let mode = 'select';
   let penColor = '#16e0ff';
@@ -586,11 +718,12 @@ function init(){
   function lsSet(k,v){ try{ localStorage.setItem(k,v); return true; }catch(e){ return false; } }
   let lsOK = (()=>{ try{ localStorage.setItem('__t','1'); localStorage.removeItem('__t'); return true; }catch(e){ return false; } })();
 
-  function serialize(){ return { v:3, cam:ST.cam, timelines:ST.timelines, notes:ST.notes, links:ST.links, strokes:ST.strokes, hiddenSources:ST.hiddenSources }; }
+  function serialize(){ return { v:4, cam:ST.cam, timelines:ST.timelines, notes:ST.notes, links:ST.links, strokes:ST.strokes, hiddenSources:ST.hiddenSources, provenance:ST.provenance }; }
   function load(data){
     if (!data) return;
     ST.timelines = data.timelines||[]; ST.notes = data.notes||[]; ST.links = data.links||[];
     ST.strokes = data.strokes||[]; ST.hiddenSources = data.hiddenSources||{};
+    ST.provenance = data.provenance||[];
     if (data.cam) ST.cam = data.cam;
     // backfill ids / fields
     ST.timelines.forEach(tl=>{ tl.id=tl.id||uid('tl'); tl.color=tl.color||'#16e0ff';
@@ -602,8 +735,10 @@ function init(){
   let autoTimer=null; function autosaveSoon(){ clearTimeout(autoTimer); autoTimer=setTimeout(autosave,400); }
 
   function commit(label){ snapshot(); renderObjects(); autosave(); }
-  function undo(){ if(!history.length) return; future.push(JSON.stringify(serialize())); load(JSON.parse(history.pop())); renderObjects(); updateWorld(); autosave(); toast('undo'); }
-  function redo(){ if(!future.length) return; history.push(JSON.stringify(serialize())); load(JSON.parse(future.pop())); renderObjects(); updateWorld(); autosave(); toast('redo'); }
+  // The provenance log is append-only: board edits undo/redo around it, but the
+  // chain-of-custody record itself is preserved across both.
+  function undo(){ if(!history.length) return; const keepProv=ST.provenance.slice(); future.push(JSON.stringify(serialize())); load(JSON.parse(history.pop())); ST.provenance=keepProv; renderObjects(); updateWorld(); autosave(); toast('undo'); }
+  function redo(){ if(!future.length) return; const keepProv=ST.provenance.slice(); history.push(JSON.stringify(serialize())); load(JSON.parse(future.pop())); ST.provenance=keepProv; renderObjects(); updateWorld(); autosave(); toast('redo'); }
 
   /* ---------------- camera / world ---------------- */
   function screenToWorld(sx,sy){ return { x:(sx-ST.cam.x)/ST.cam.zoom, y:(sy-ST.cam.y)/ST.cam.zoom }; }
@@ -651,6 +786,7 @@ function init(){
     ST.timelines.forEach(renderTimeline);
     ST.notes.forEach(renderNote);
     renderLegend();
+    renderProvenance();
     drawLinks();
     applyFilter();
     autosaveSoon();
@@ -803,6 +939,47 @@ function init(){
     });
   }
 
+  /* ---------------- provenance / chain of custody ---------------- */
+  // Append a tamper-evident record of an artifact entering the board: when, which
+  // tool, how many events, the byte size, and a SHA-256 fingerprint of the exact
+  // bytes ingested — reproducible offline with `sha256sum`. Append-only and
+  // wrapped so a logging failure can never break an ingest.
+  function logProvenance(rec){
+    try{
+      const raw = rec.raw==null ? '' : String(rec.raw);
+      const entry = {
+        id: uid('pv'), ts: Date.now(),
+        action: rec.action||'ingest',
+        tool: rec.tool||'manual',
+        title: rec.title||'',
+        count: rec.count||0,
+        types: rec.types||[],
+        bytes: raw ? (typeof TextEncoder!=='undefined' ? new TextEncoder().encode(raw).length : raw.length) : (rec.bytes||0),
+        sha256: raw ? sha256(raw) : (rec.sha256||''),
+      };
+      ST.provenance.push(entry);
+      renderProvenance();
+      autosaveSoon();
+      return entry;
+    }catch(e){ return null; }
+  }
+  function renderProvenance(){
+    const list=$('#prov-list'); if(!list) return;
+    const head=$('#prov-head');
+    const log=ST.provenance||[];
+    if (head) head.textContent = log.length ? ('CHAIN OF CUSTODY · '+log.length) : 'CHAIN OF CUSTODY';
+    list.textContent='';
+    if (!log.length){ list.appendChild(el('div',{class:'prov-empty', text:'no artifacts logged yet'})); return; }
+    log.slice(-40).reverse().forEach(p=>{
+      const row=el('div',{class:'prov', title:`${new Date(p.ts).toLocaleString()} · ${p.action} · ${p.count} events · ${p.bytes} bytes\nsha256: ${p.sha256||'—'}`});
+      row.appendChild(el('span',{class:'prov-t', text:new Date(p.ts).toLocaleTimeString()}));
+      row.appendChild(el('span',{class:'prov-tool', style:`color:${sourceColor(p.tool)}`, text:p.tool}));
+      row.appendChild(el('span',{class:'prov-n', text:'+'+p.count}));
+      row.appendChild(el('span',{class:'prov-h', text:p.sha256?p.sha256.slice(0,10):'—'}));
+      list.appendChild(row);
+    });
+  }
+
   /* ---------------- search / filter ---------------- */
   let filterText='';
   function applyFilter(){
@@ -875,6 +1052,8 @@ function init(){
     tl.points.sort((a,b)=> (a.t==null?-1:b.t==null?1:a.t-b.t));
     renderObjects(); autosave();
     flashConsole(events, opts.source);
+    logProvenance({ action: opts.provAction||'ingest', tool: opts.source||'manual', title: tl.title,
+      count: events.length, types: [...new Set(events.map(e=>e.type))].slice(0,12), raw: opts.raw });
     toast(`ingested ${events.length} event${events.length>1?'s':''} → ${tl.title}`);
     return tl;
   }
@@ -1317,7 +1496,7 @@ function init(){
   $('#ingest-tool').addEventListener('change', updatePreview);
   $('#ingest-go').addEventListener('click', ()=>{
     const {resolved,events}=currentParse();
-    ingest(events, { source:resolved, gran:$('#ingest-group').value, timelineId:$('#ingest-target').value||null });
+    ingest(events, { source:resolved, gran:$('#ingest-group').value, timelineId:$('#ingest-target').value||null, raw:$('#ingest-text').value });
     closeIngest(); $('#ingest-text').value='';
   });
   $('#ingest-close').addEventListener('click', closeIngest);
@@ -1349,7 +1528,7 @@ function init(){
   /*  LIVE PIPE (WebSocket → parser → timeline)                       */
   /* ================================================================ */
   let pipe=null, pipeBuf='', pipeTL=null, pipeMode='';
-  const RECON_TOOLS=['subfinder','amass','dnsx','httpx','nmap','whois','theharvester'];
+  const RECON_TOOLS=['subfinder','amass','dnsx','httpx','nmap','whois','theharvester','bbot'];
   function setPipeStatus(cls, msg){ const s=$('#pipe-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
   function setReconStatus(cls, msg){ const s=$('#recon-status'); if(s){ s.className='pipe-status '+cls; s.textContent=msg; } }
 
@@ -1384,7 +1563,9 @@ function init(){
     if (j.type==='run-start'){ snapshot(); pipeTL = addTimeline({ title:'RECON · '+j.target, color:'#27e8a7' }); renderObjects(); fitView(); setReconStatus('on','● running '+j.target+'…'); conLine('# recon '+j.target+' :: '+(j.tools||[]).join(', '),'sys','runner'); return; }
     if (j.type==='run-done'){ setReconStatus('on','● done · '+j.target); toast('recon complete: '+j.target); pipeTL=null; renderLegend(); return; }
     if (j.type==='log'){ const line=String(j.line||''); if(line.trim()) conLine(line.length>140?line.slice(0,140)+'…':line, /^#/.test(line)?'sys':'', j.tool); return; }
-    if (j.type==='result'){ const tool=j.tool||'lines'; let events=[]; try{ events=TOOLS[tool].parse(String(j.text||'')); }catch(e){} pipeIngest(events, tool); return; }
+    if (j.type==='result'){ const tool=j.tool||'lines'; const text=String(j.text||''); let events=[]; try{ events=TOOLS[tool].parse(text); }catch(e){}
+      if (events.length){ pipeIngest(events, tool); logProvenance({ action:'recon', tool, title:(pipeTL&&pipeTL.title)||'RECON', count:events.length, types:[...new Set(events.map(e=>e.type))].slice(0,12), raw:text }); }
+      return; }
     // legacy
     const tool=j.tool||'lines';
     if (Array.isArray(j.events)){ pipeIngest(j.events, tool); return; }
@@ -1486,9 +1667,12 @@ function init(){
     toast('exported events .csv');
   }
   function exportMaltego(){
-    const map={ip:'maltego.IPv4Address',ipv6:'maltego.IPv6Address',domain:'maltego.Domain',email:'maltego.EmailAddress',url:'maltego.URL',phone:'maltego.PhoneNumber',port:'maltego.Service',asn:'maltego.AS','hash-md5':'maltego.Hash','hash-sha1':'maltego.Hash','hash-sha256':'maltego.Hash',cve:'maltego.Vulnerability'};
+    const map={ip:'maltego.IPv4Address',ipv6:'maltego.IPv6Address',domain:'maltego.Domain',email:'maltego.EmailAddress',url:'maltego.URL',phone:'maltego.PhoneNumber',port:'maltego.Service',asn:'maltego.AS',cidr:'maltego.Netblock',btc:'maltego.BitcoinAddress','hash-md5':'maltego.Hash','hash-sha1':'maltego.Hash','hash-sha256':'maltego.Hash',cve:'maltego.Vulnerability'};
+    // Prefer the event's own type; otherwise fall back to classifying the value,
+    // so generic 'data' rows still land as proper Maltego entities (IPs, domains…).
+    const entityFor=e=> map[e.type] || map[classify(e.data)] || 'maltego.Phrase';
     const rows=[['entity','value','source','module','timestamp']];
-    allEvents().forEach(e=> rows.push([ map[e.type]||'maltego.Phrase', e.data, e.source, e.module, e.t!=null?fmtTime(e.t):'' ]));
+    allEvents().forEach(e=> rows.push([ entityFor(e), e.data, e.source, e.module, e.t!=null?fmtTime(e.t):'' ]));
     download(baseName()+'-maltego.csv', rows.map(r=>r.map(csvCell).join(',')).join('\r\n'), 'text/csv');
     toast('exported Maltego .csv');
   }
@@ -1505,8 +1689,20 @@ function init(){
       out.push('');
     }
     if (ST.links.length){ out.push('## Linked events',''); ST.links.forEach(l=>{ const a=findBox(l.from), b=findBox(l.to); if(a&&b) out.push(`- ${mdCell(a.data)} ↔ ${mdCell(b.data)}`); }); out.push(''); }
+    if ((ST.provenance||[]).length){
+      out.push('## Chain of custody','', '_append-only ingest log · SHA-256 fingerprints reproduce offline with `sha256sum`_','',
+        '| time (UTC) | action | tool | events | bytes | sha-256 |','|---|---|---|---|---|---|');
+      ST.provenance.forEach(p=> out.push(`| ${new Date(p.ts).toISOString()} | ${mdCell(p.action)} | ${mdCell(p.tool)} | ${p.count} | ${p.bytes||0} | \`${p.sha256||''}\` |`));
+      out.push('');
+    }
     download(baseName()+'.md', out.join('\n'), 'text/markdown');
     toast('exported report .md');
+  }
+  function exportProvenance(){
+    const log=ST.provenance||[];
+    const doc={ tool:'OSINT Holotable', kind:'chain-of-custody', generated:new Date().toISOString(), count:log.length, records:log };
+    download(baseName()+'-custody.json', JSON.stringify(doc,null,2), 'application/json');
+    toast('exported chain of custody .json');
   }
   function importBoard(file){
     const r=new FileReader();
@@ -1523,6 +1719,7 @@ function init(){
       {label:'Events (.csv)', key:'flat', fn:exportCSV},
       {label:'Maltego (.csv)', key:'graph', fn:exportMaltego},
       {label:'Report (.md)', key:'doc', fn:exportMarkdown},
+      {label:'Chain of custody (.json)', key:'audit', fn:exportProvenance},
     ]);
   });
   $('#import-btn').addEventListener('click', ()=>$('#import-file').click());
@@ -1558,7 +1755,7 @@ function init(){
   // quick-ingest chips
   function renderQuickTools(){
     const q=$('#quick-tools'); q.textContent='';
-    ['auto','spiderfoot','nmap','masscan','amass','subfinder','httpx','dnsx','nuclei','shodan','theharvester','whois','urls','maltego','secrets','json','csv'].forEach(k=>{
+    ['auto','spiderfoot','bbot','nmap','masscan','amass','subfinder','httpx','dnsx','nuclei','shodan','theharvester','whois','urls','maltego','secrets','json','csv'].forEach(k=>{
       if(!TOOLS[k]) return;
       q.appendChild(el('span',{class:'qt', style:`color:${TOOLS[k].color}`, text:TOOLS[k].label, onclick:()=>openIngest(k)}));
     });
@@ -1662,7 +1859,7 @@ if (typeof module !== 'undefined' && module.exports){
     parseTime, fmtTime, toLocalInput, fromLocalInput, bucketMs, classify, parseCSV, headerIndex,
     parseSpiderfoot, parseCSVGeneric, parseJSONGeneric, parseHarvester, parseNmap, parseAmass,
     parseShodan, parseWhois, parseDns, parseLines, flattenJSON,
-    parseHttpx, parseNuclei, parseMasscan, parseDnsx, parseSubdomains, parseUrls, parseSecrets, detectTool,
-    eventsToPoints, layoutPoints, sourceColor, TOOLS,
+    parseHttpx, parseNuclei, parseMasscan, parseDnsx, parseSubdomains, parseUrls, parseSecrets, parseBbot, detectTool,
+    eventsToPoints, layoutPoints, sourceColor, sha256, TOOLS,
   };
 }
