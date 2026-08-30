@@ -13,6 +13,7 @@ This folder ships three deliverables (all requested, all here):
 | [`osint_agent.py`](osint_agent.py) | **Python** reference harness — zero-dependency (stdlib WebSocket client + urllib). |
 | [`go/osint-agent.go`](go/osint-agent.go) | **Go** reference harness — single static binary, stdlib only. Built for the air-gapped box. |
 | [`prep_dataset.py`](prep_dataset.py) | **Dataset prep** — filter/dedup/augment/split recorded trajectories into train/val JSONL. |
+| [`finetune/`](finetune/) | **Fine-tuning quickstart** — one-command corpus gen + ready-to-run Unsloth & LLaMA-Factory QLoRA configs. |
 
 Both harnesses were smoke-tested end-to-end against the real runner in simulate
 mode (handshake → tool loop → entity extraction → `board.json` + `report.md`).
@@ -299,6 +300,13 @@ so you can fan many runs (and both languages) into one file.
 
 This is the bridge from "prompted baseline" to "fine-tuned worker" — with
 `--vary` + `--augment`, the corpus builds (and diversifies) itself.
+
+**Turnkey:** [`finetune/gen_corpus.sh`](finetune/gen_corpus.sh) runs the whole
+chain (runner `--vary` → teacher `--record` over many targets → `prep_dataset`
+→ ShareGPT convert), and [`finetune/`](finetune/README.md) ships ready-to-run
+**Unsloth** (`unsloth_qlora.py`, reads the JSONL directly) and **LLaMA-Factory**
+(`qwen_qlora.yaml` + `dataset_info.json`) QLoRA configs. See its README for the
+train → serve → point-the-harness-back loop.
 
 ### 5.5 Pitfalls
 
